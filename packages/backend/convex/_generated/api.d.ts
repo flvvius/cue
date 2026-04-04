@@ -14,6 +14,7 @@ import type * as excludedApps from "../excludedApps.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as nudges from "../nudges.js";
 import type * as privateData from "../privateData.js";
+import type * as recommendations from "../recommendations.js";
 import type * as usageSessions from "../usageSessions.js";
 import type * as users from "../users.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   nudges: typeof nudges;
   privateData: typeof privateData;
+  recommendations: typeof recommendations;
   usageSessions: typeof usageSessions;
   users: typeof users;
 }>;

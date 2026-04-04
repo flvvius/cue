@@ -12,9 +12,13 @@ export default function SettingsTab() {
   const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
   const queueNudge = useMutation(api.nudges.queueForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
+  const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
+  const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
   const [isQueueing, setIsQueueing] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
+  const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
+  const [isClearingRecommendations, setIsClearingRecommendations] = React.useState(false);
 
   const handleSendTestNudge = React.useCallback(async () => {
     if (isQueueing) {
@@ -68,6 +72,34 @@ export default function SettingsTab() {
       setIsClearing(false);
     }
   }, [activeNudge, isClearing, respondToNudge]);
+
+  const handleSeedRecommendations = React.useCallback(async () => {
+    if (isSeedingRecommendations) {
+      return;
+    }
+
+    setIsSeedingRecommendations(true);
+    try {
+      const result = await seedFallbackRecommendations({});
+      setDebugStatus(`Seeded ${result.seeded} fallback recommendations for ${result.effectiveDate}.`);
+    } finally {
+      setIsSeedingRecommendations(false);
+    }
+  }, [isSeedingRecommendations, seedFallbackRecommendations]);
+
+  const handleClearRecommendations = React.useCallback(async () => {
+    if (isClearingRecommendations) {
+      return;
+    }
+
+    setIsClearingRecommendations(true);
+    try {
+      const result = await clearRecommendations({});
+      setDebugStatus(`Cleared ${result.cleared} AI recommendations.`);
+    } finally {
+      setIsClearingRecommendations(false);
+    }
+  }, [clearRecommendations, isClearingRecommendations]);
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -133,6 +165,28 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {(overview?.recommendations ?? []).slice(0, 3).map((recommendation) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => void handleSeedRecommendations()}
+              disabled={isSeedingRecommendations}
+              className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isSeedingRecommendations ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+                {isSeedingRecommendations ? "Seeding..." : "Seed fallback recs"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void handleClearRecommendations()}
+              disabled={isClearingRecommendations}
+              className="flex-1 rounded-xl border border-border bg-surface px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isClearingRecommendations ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
+                {isClearingRecommendations ? "Clearing..." : "Clear recs"}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
