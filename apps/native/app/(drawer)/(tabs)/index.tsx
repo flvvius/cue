@@ -1,13 +1,32 @@
 import { api } from "@cue/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
-import { Text, View } from "react-native";
+import React from "react";
+import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 import { useEnforcementPreview } from "@/lib/enforcement-preview";
 
+function formatBreakScheduleWindow(window: {
+  from: string;
+  to: string;
+  breakAfterMinutes: number;
+}) {
+  return `${window.from}-${window.to} -> ${window.breakAfterMinutes}m break`;
+}
+
 export default function Home() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const enforcementPreview = useEnforcementPreview();
+  const [showExcludedApps, setShowExcludedApps] = React.useState(false);
+
+  const acceptedNudges = overview?.nudgeStats.accepted ?? 0;
+  const dismissedNudges = overview?.nudgeStats.dismissed ?? 0;
+  const totalNudges = acceptedNudges + dismissedNudges;
+  const acceptedRatio = totalNudges > 0
+    ? Math.round((acceptedNudges / totalNudges) * 100)
+    : 0;
+  const todayMinutes = overview?.monitoredApps.reduce((sum, app) => sum + app.totalMinutes, 0) ?? 0;
+  const todaySessions = overview?.monitoredApps.reduce((sum, app) => sum + app.sessionCount, 0) ?? 0;
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -30,10 +49,10 @@ export default function Home() {
               Today
             </Text>
             <Text className="mt-2 text-foreground text-2xl font-['Inter_700Bold']">
-              {overview?.monitoredApps.reduce((sum, app) => sum + app.totalMinutes, 0) ?? 0} min
+              {todayMinutes} min
             </Text>
             <Text className="mt-1 text-secondary text-sm font-['Inter_400Regular']">
-              Across {overview?.monitoredApps.reduce((sum, app) => sum + app.sessionCount, 0) ?? 0} sessions
+              Across {todaySessions} sessions
             </Text>
           </View>
 
@@ -85,16 +104,119 @@ export default function Home() {
           </View>
         </View>
 
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-secondary text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+            Current recommendations
+          </Text>
+          <Text className="mt-2 text-foreground text-2xl font-['Inter_600SemiBold']">
+            Limits and break windows
+          </Text>
+          <View className="mt-4 gap-4">
+            {overview?.recommendations.length ? (
+              overview.recommendations.map((recommendation) => (
+                <View
+                  key={`${recommendation.appPackage}-${recommendation.effectiveDate}`}
+                  className="rounded-2xl border border-border bg-background px-4 py-4"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-foreground text-base font-['Inter_600SemiBold']">
+                      {recommendation.appName}
+                    </Text>
+                    <Text className="text-accent text-sm font-['Inter_600SemiBold']">
+                      {recommendation.sessionLimitMinutes} min
+                    </Text>
+                  </View>
+                  <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                    {recommendation.breakSchedule.length
+                      ? recommendation.breakSchedule
+                        .slice(0, 2)
+                        .map(formatBreakScheduleWindow)
+                        .join(" • ")
+                      : "No active break windows. Default 5-minute fallback will apply."}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text className="text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                No app-specific AI recommendations yet. Cue will fall back to your default limit for now.
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-4">
+              <Text className="text-secondary text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+                Excluded apps
+              </Text>
+              <Text className="mt-2 text-foreground text-2xl font-['Inter_600SemiBold']">
+                {overview?.excludedApps.length ?? 0} apps ignored
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setShowExcludedApps((value) => !value)}
+              className="rounded-full border border-border px-4 py-2"
+            >
+              <Text className="text-secondary text-sm font-['Inter_600SemiBold']">
+                {showExcludedApps ? "Hide" : "Show"}
+              </Text>
+            </Pressable>
+          </View>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            These apps are still synced to Convex, but they are skipped by local enforcement and nudges.
+          </Text>
+          {showExcludedApps ? (
+            <View className="mt-4 gap-3">
+              {overview?.excludedApps.length ? (
+                overview.excludedApps.map((app) => (
+                  <View
+                    key={app.appPackage}
+                    className="rounded-2xl border border-border bg-background px-4 py-4"
+                  >
+                    <Text className="text-foreground text-base font-['Inter_600SemiBold']">
+                      {app.appName}
+                    </Text>
+                    <Text className="mt-1 text-secondary text-sm font-['Inter_400Regular']">
+                      {app.appPackage}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text className="text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                  Nothing is excluded yet.
+                </Text>
+              )}
+            </View>
+          ) : null}
+        </View>
+
         <View className="rounded-2xl border border-break/30 bg-break/12 p-5">
           <Text className="text-break text-sm font-['Inter_600SemiBold']">
             Nudge stats
           </Text>
           <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
-            {overview?.nudgeStats.accepted ?? 0} accepted / {overview?.nudgeStats.dismissed ?? 0} dismissed
+            {acceptedNudges} accepted / {dismissedNudges} dismissed
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            The UI is ready for real nudge activity as soon as the enforcement loop starts writing records.
+            {totalNudges > 0
+              ? `${acceptedRatio}% of today's nudges ended in a break instead of a dismissal.`
+              : "The UI is ready for real nudge activity as soon as the enforcement loop starts writing records."}
           </Text>
+          {totalNudges > 0 ? (
+            <View className="mt-4 h-3 overflow-hidden rounded-full bg-surface">
+              <View className="h-3 flex-row overflow-hidden rounded-full">
+                <View
+                  className="bg-success"
+                  style={{ width: `${Math.max(8, acceptedRatio)}%` }}
+                />
+                <View
+                  className="bg-danger"
+                  style={{ width: `${Math.max(0, 100 - Math.max(8, acceptedRatio))}%` }}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
 
         <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
@@ -166,8 +288,17 @@ export default function Home() {
             {overview?.currentStreakDays ?? 0} day
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            A lightweight first streak model: one day if all monitored apps stayed within their current limits today.
+            {overview?.currentStreakDays
+              ? "Today is currently clean across all monitored apps."
+              : "A streak starts once every monitored app stays within its limit for the day."}
           </Text>
+          <View className="mt-4 rounded-2xl border border-border bg-background px-4 py-4">
+            <Text className="text-secondary text-sm font-['Inter_500Medium']">
+              {overview?.currentStreakDays
+                ? "Momentum is on your side. Keep nudges accepted and your monitored apps under their limits."
+                : "One calm day is enough to start the streak. This makes the first win easy to explain in the demo."}
+            </Text>
+          </View>
         </View>
       </View>
     </Container>
