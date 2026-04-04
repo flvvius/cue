@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { z } from "zod";
 
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 
 const breakScheduleWindowSchema = z.object({
@@ -73,8 +73,8 @@ http.route({
       );
     }
 
-    const result = await ctx.runAction((api as any).aiPipeline.storeRecommendationsFromWebhook, {
-      userId: parsedPayload.data.userId,
+    const result = await ctx.runMutation((internal as any).recommendations.storeForClerkUser, {
+      clerkId: parsedPayload.data.userId,
       effectiveDate: parsedPayload.data.effectiveDate,
       recommendations: parsedPayload.data.recommendations,
     });

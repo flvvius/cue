@@ -15,12 +15,14 @@ export default function SettingsTab() {
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
   const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
   const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
+  const seedDemoDataForCurrentUser = useMutation((api as any).demoData.seedForCurrentUser);
   const [isQueueing, setIsQueueing] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
   const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = React.useState(false);
   const [isTriggeringExport, setIsTriggeringExport] = React.useState(false);
+  const [isSeedingDemoData, setIsSeedingDemoData] = React.useState(false);
 
   const handleSendTestNudge = React.useCallback(async () => {
     if (isQueueing) {
@@ -129,6 +131,22 @@ export default function SettingsTab() {
     }
   }, [isTriggeringExport, triggerExportForCurrentUser]);
 
+  const handleSeedDemoData = React.useCallback(async () => {
+    if (isSeedingDemoData) {
+      return;
+    }
+
+    setIsSeedingDemoData(true);
+    try {
+      const result = await seedDemoDataForCurrentUser({});
+      setDebugStatus(
+        `Seeded ${result.inserted} demo sessions across ${result.seededApps.join(", ")}${result.skipped ? ` (${result.skipped} already existed)` : ""}.`,
+      );
+    } finally {
+      setIsSeedingDemoData(false);
+    }
+  }, [isSeedingDemoData, seedDemoDataForCurrentUser]);
+
   return (
     <Container className="bg-background px-5 py-8">
       <View className="flex-1 gap-4">
@@ -236,6 +254,30 @@ export default function SettingsTab() {
             >
               <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
                 {isTriggeringExport ? "Building..." : "Trigger export"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Demo prep
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            Seed realistic usage history
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Inserts a handful of recent sessions for common apps so the dashboard looks strong even if today’s real device history is light.
+          </Text>
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => void handleSeedDemoData()}
+              disabled={isSeedingDemoData}
+              className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isSeedingDemoData ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+                {isSeedingDemoData ? "Seeding..." : "Seed demo sessions"}
               </Text>
             </Pressable>
           </View>
