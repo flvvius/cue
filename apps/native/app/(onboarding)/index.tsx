@@ -4,15 +4,27 @@ import { Pressable, Text, View } from "react-native";
 import { Container } from "@/components/container";
 
 const onboardingSteps = [
+  "Grant Android usage access so Cue can read real sessions",
+  "Exclude the essential apps that should always stay available",
   "Choose a default session limit",
+  "Pick a few better alternatives for your interruption moments",
   "Pick the tone of your nudges",
   "Unlock the main app and keep building from there",
 ];
 
 export default function OnboardingIndexScreen() {
   return (
-    <Container className="bg-background px-5 py-8" isScrollable={false}>
-      <View className="flex-1 justify-between">
+    <Container
+      className="bg-background px-5"
+      scrollViewProps={{
+        contentContainerStyle: {
+          flexGrow: 1,
+          paddingTop: 32,
+          paddingBottom: 32,
+        },
+      }}
+    >
+      <View className="flex-1 justify-between gap-8">
         <View>
           <Text className="text-accent text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
             Onboarding
@@ -21,8 +33,8 @@ export default function OnboardingIndexScreen() {
             Let’s set your first healthy defaults.
           </Text>
           <Text className="mt-4 text-base leading-7 text-secondary font-['Inter_400Regular']">
-            This is the first roadmap slice: a real onboarding gate with the core preferences we
-            need before building permissions, exclusions, and live nudges.
+            This first slice now includes the real Android permission gate, plus the core preferences
+            Cue needs before exclusions and live nudges.
           </Text>
         </View>
 
@@ -42,15 +54,22 @@ export default function OnboardingIndexScreen() {
           ))}
         </View>
 
-        <Pressable
-          onPress={() => router.push("/(onboarding)/limit")}
-          className="mt-8 rounded-xl bg-brand-strong px-5 py-4"
-          style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
-        >
-          <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
-            Start onboarding
-          </Text>
-        </Pressable>
+        <View className="pt-2">
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/(onboarding)/permission",
+                params: { next: "exclusions" },
+              })
+            }
+            className="rounded-xl bg-brand-strong px-5 py-4"
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+          >
+            <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+              Start setup
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </Container>
   );

@@ -11,7 +11,10 @@
       }
     },
     "android": {
-      "package": "com.hack.cue"
+      "package": "com.hack.cue",
+      "permissions": [
+        "android.permission.PACKAGE_USAGE_STATS"
+      ]
     },
     "web": {
       "bundler": "metro"

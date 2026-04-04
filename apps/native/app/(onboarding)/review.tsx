@@ -53,7 +53,7 @@ export default function OnboardingReviewScreen() {
           First slice complete.
         </Text>
         <Text className="mt-3 text-base leading-7 text-secondary font-['Inter_400Regular']">
-          We’re saving your first two onboarding preferences now so the rest of the roadmap has a real user state to build on.
+          We’re saving your Android permission-backed setup, core exclusions, and first two preferences now so the rest of the roadmap has a real user state to build on.
         </Text>
 
         <View className="mt-8 gap-3">
@@ -78,7 +78,7 @@ export default function OnboardingReviewScreen() {
               Next
             </Text>
             <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
-              Permission grant, exclusions, and alternatives picker are the next roadmap steps.
+              Alternatives, session syncing, and real nudges are the next roadmap steps.
             </Text>
           </View>
         </View>

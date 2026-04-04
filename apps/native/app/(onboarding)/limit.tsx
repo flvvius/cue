@@ -13,7 +13,7 @@ export default function OnboardingLimitScreen() {
     <Container className="bg-background px-5 py-8" isScrollable={false}>
       <View className="flex-1">
         <Text className="text-accent text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
-          Step 1
+          Step 2
         </Text>
         <Text className="mt-4 text-3xl leading-10 text-foreground font-['Inter_700Bold']">
           Pick a fallback session limit.
@@ -60,7 +60,7 @@ export default function OnboardingLimitScreen() {
           <Pressable
             onPress={() =>
               router.push({
-                pathname: "/(onboarding)/style",
+                pathname: "/(onboarding)/alternatives",
                 params: { defaultLimitMinutes: String(selectedLimit) },
               })
             }

@@ -30,7 +30,7 @@ export default function OnboardingStyleScreen() {
     <Container className="bg-background px-5 py-8" isScrollable={false}>
       <View className="flex-1">
         <Text className="text-accent text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
-          Step 2
+          Step 4
         </Text>
         <Text className="mt-4 text-3xl leading-10 text-foreground font-['Inter_700Bold']">
           Choose how Cue should speak to you.

@@ -16,11 +16,13 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { HeroUINativeProvider } from "heroui-native";
 import React from "react";
+import { Platform } from "react-native";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { AppThemeProvider } from "@/contexts/app-theme-context";
+import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export const unstable_settings = {
   initialRouteName: "(drawer)",
@@ -63,6 +65,7 @@ function NavigationGate() {
   const currentUser = useQuery(api.users.current);
   const router = useRouter();
   const segments = useSegments();
+  const usageAccess = useAndroidUsageAccess();
 
   React.useEffect(() => {
     if (!isLoaded) {
@@ -85,6 +88,25 @@ function NavigationGate() {
       return;
     }
 
+    const needsAndroidUsageAccess = Platform.OS === "android" &&
+      usageAccess.isRelevant &&
+      usageAccess.isAvailable &&
+      !usageAccess.granted;
+
+    if (needsAndroidUsageAccess) {
+      const inPermissionStep = inOnboarding && segments[1] === "permission";
+
+      if (!inPermissionStep) {
+        router.replace({
+          pathname: "/(onboarding)/permission",
+          params: {
+            next: currentUser.onboardingComplete ? "home" : "exclusions",
+          },
+        });
+      }
+      return;
+    }
+
     if (!currentUser.onboardingComplete) {
       if (!inOnboarding) {
         router.replace("/(onboarding)");
@@ -96,7 +118,7 @@ function NavigationGate() {
       router.replace("/(drawer)");
       return;
     }
-  }, [currentUser, isLoaded, isSignedIn, router, segments]);
+  }, [currentUser, isLoaded, isSignedIn, router, segments, usageAccess.granted, usageAccess.isAvailable, usageAccess.isRelevant]);
 
   if (!isLoaded || (isSignedIn && (currentUser === undefined || currentUser === null))) {
     return (

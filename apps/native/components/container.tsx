@@ -9,7 +9,7 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 type Props = AnimatedProps<ViewProps> & {
   className?: string;
   isScrollable?: boolean;
-  scrollViewProps?: Omit<ScrollViewProps, "contentContainerStyle">;
+  scrollViewProps?: ScrollViewProps;
 };
 
 export function Container({
