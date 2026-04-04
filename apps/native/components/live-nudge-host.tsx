@@ -7,8 +7,10 @@ import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NudgeCard } from "@/components/nudge-card";
+import { useBreakState } from "@/contexts/break-state-context";
 import { resolveBreakDurationMinutes } from "@/lib/break-duration";
 import { useLocalNudgeEngine } from "@/lib/local-nudge-engine";
+import { clearNotificationForNudge, useNudgeNotifications } from "@/lib/nudge-notifications";
 
 export function LiveNudgeHost() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -16,6 +18,7 @@ export function LiveNudgeHost() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
+  const { startBreak } = useBreakState();
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
@@ -23,6 +26,7 @@ export function LiveNudgeHost() {
   const [handledNudgeId, setHandledNudgeId] = React.useState<string | null>(null);
 
   useLocalNudgeEngine();
+  useNudgeNotifications(activeNudge);
 
   React.useEffect(() => {
     if (!activeNudge) {
@@ -60,6 +64,7 @@ export function LiveNudgeHost() {
           nudgeId: activeNudge._id,
           status,
         });
+        await clearNotificationForNudge(String(activeNudge._id));
 
         if (status === "accepted") {
           const recommendation = overview?.recommendations.find(
@@ -73,14 +78,25 @@ export function LiveNudgeHost() {
           const breakDurationMinutes =
             activeNudge.breakDurationMinutes ??
             resolveBreakDurationMinutes(recommendation);
+          const endsAt = Date.now() + breakDurationMinutes * 60 * 1000;
+
+          startBreak({
+            appPackage: activeNudge.triggerApp,
+            appName,
+            alternative: activeNudge.alternative ?? undefined,
+            startedAt: Date.now(),
+            endsAt,
+            durationMinutes: breakDurationMinutes,
+          });
 
           router.push({
             pathname: "/break-timer",
             params: {
+              appPackage: activeNudge.triggerApp,
               appName,
               alternative: activeNudge.alternative ?? undefined,
               durationMinutes: String(breakDurationMinutes),
-              endsAt: String(Date.now() + breakDurationMinutes * 60 * 1000),
+              endsAt: String(endsAt),
             },
           });
         }

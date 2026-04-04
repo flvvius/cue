@@ -13,7 +13,7 @@ function DrawerLayout() {
 
   return (
     <Drawer
-      screenOptions={{
+      screenOptions={({ navigation }) => ({
         headerTintColor: themeColorForeground,
         headerStyle: { backgroundColor: themeColorBackground },
         headerTitleStyle: {
@@ -21,7 +21,16 @@ function DrawerLayout() {
           color: themeColorForeground,
         },
         drawerStyle: { backgroundColor: themeColorBackground },
-      }}
+        headerLeft: () => (
+          <Pressable
+            className="ml-4"
+            hitSlop={12}
+            onPress={() => navigation.toggleDrawer()}
+          >
+            <Ionicons name="menu-outline" size={24} color={themeColorForeground} />
+          </Pressable>
+        ),
+      })}
     >
       <Drawer.Screen
         name="index"

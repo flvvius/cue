@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import React from "react";
 import { AppState, Platform } from "react-native";
 
+import { useBreakState } from "@/contexts/break-state-context";
 import { getUsageEvents, hasUsageEventsBridge, type RawUsageEvent, useAndroidUsageAccess } from "@/lib/usage-access";
 import { resolveThresholdBucket, type ThresholdBucket } from "@/lib/enforcement-thresholds";
 import {
@@ -54,11 +55,23 @@ function addLimitState(
 function buildPreviewFromEvents(
   rawEvents: RawUsageEvent[],
   excludedPackages: Set<string>,
+  sessionResetCutoffs: Record<string, number>,
   recommendationLimits: Map<string, number>,
   defaultLimitMinutes: number,
   now: number,
 ): Pick<EnforcementPreviewState, "activeSession" | "warmSession" | "mergedSessions"> {
-  const monitoredEvents = rawEvents.filter((event) => !excludedPackages.has(event.appPackage));
+  const monitoredEvents = rawEvents.filter((event) => {
+    if (excludedPackages.has(event.appPackage)) {
+      return false;
+    }
+
+    const resetCutoff = sessionResetCutoffs[event.appPackage];
+    if (resetCutoff && event.timestamp < resetCutoff) {
+      return false;
+    }
+
+    return true;
+  });
   const computedSessions = computeSessionsFromUsageEvents(monitoredEvents);
   const mergedSessions = mergeSessionsForEnforcement(computedSessions, MERGE_WINDOW_MS)
     .map((session) => addLimitState(session, recommendationLimits, defaultLimitMinutes));
@@ -119,6 +132,7 @@ function buildPreviewFromEvents(
 export function useEnforcementPreview() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const usageAccess = useAndroidUsageAccess();
+  const { sessionResetCutoffs } = useBreakState();
   const [state, setState] = React.useState<EnforcementPreviewState>({
     bridgeReady: hasUsageEventsBridge(),
     isRefreshing: false,
@@ -165,6 +179,7 @@ export function useEnforcementPreview() {
       const preview = buildPreviewFromEvents(
         rawEvents,
         new Set((overview.excludedApps ?? []).map((app) => app.appPackage)),
+        sessionResetCutoffs,
         recommendationLimits,
         overview.defaultLimitMinutes,
         Date.now(),
@@ -182,7 +197,7 @@ export function useEnforcementPreview() {
         isRefreshing: false,
       }));
     }
-  }, [overview, usageAccess.granted]);
+  }, [overview, sessionResetCutoffs, usageAccess.granted]);
 
   React.useEffect(() => {
     void refresh();

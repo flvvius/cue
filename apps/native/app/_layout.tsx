@@ -23,6 +23,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { LiveNudgeHost } from "@/components/live-nudge-host";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
+import { BreakStateProvider } from "@/contexts/break-state-context";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export const unstable_settings = {
@@ -164,12 +165,14 @@ export default function Layout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <AppThemeProvider>
-              <HeroUINativeProvider>
-                <View className="flex-1">
-                  <NavigationGate />
-                  <LiveNudgeHost />
-                </View>
-              </HeroUINativeProvider>
+              <BreakStateProvider>
+                <HeroUINativeProvider>
+                  <View className="flex-1">
+                    <NavigationGate />
+                    <LiveNudgeHost />
+                  </View>
+                </HeroUINativeProvider>
+              </BreakStateProvider>
             </AppThemeProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>

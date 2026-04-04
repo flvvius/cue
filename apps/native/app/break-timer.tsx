@@ -4,6 +4,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { useBreakState } from "@/contexts/break-state-context";
 
 function formatRemainingTime(totalMs: number) {
   const safeMs = Math.max(0, totalMs);
@@ -16,19 +17,29 @@ function formatRemainingTime(totalMs: number) {
 
 export default function BreakTimerScreen() {
   const router = useRouter();
+  const { activeBreak, finishBreak } = useBreakState();
   const params = useLocalSearchParams<{
+    appPackage?: string;
     appName?: string;
     alternative?: string;
     durationMinutes?: string;
     endsAt?: string;
   }>();
-  const appName = params.appName ?? "This app";
-  const alternative = params.alternative;
-  const durationMinutes = Math.max(1, Number(params.durationMinutes ?? "5"));
-  const initialEndsAt = Number(params.endsAt ?? String(Date.now() + durationMinutes * 60 * 1000));
+  const appPackage = params.appPackage ?? activeBreak?.appPackage ?? "debug.manual";
+  const appName = params.appName ?? activeBreak?.appName ?? "This app";
+  const alternative = params.alternative ?? activeBreak?.alternative;
+  const durationMinutes = Math.max(
+    1,
+    Number(params.durationMinutes ?? String(activeBreak?.durationMinutes ?? 5)),
+  );
+  const initialEndsAt = Number(
+    params.endsAt ?? String(activeBreak?.endsAt ?? Date.now() + durationMinutes * 60 * 1000),
+  );
   const [remainingMs, setRemainingMs] = React.useState(() => Math.max(0, initialEndsAt - Date.now()));
+  const hasFinishedRef = React.useRef(false);
 
   React.useEffect(() => {
+    hasFinishedRef.current = false;
     setRemainingMs(Math.max(0, initialEndsAt - Date.now()));
 
     const intervalId = setInterval(() => {
@@ -41,6 +52,25 @@ export default function BreakTimerScreen() {
   }, [initialEndsAt]);
 
   const isComplete = remainingMs <= 0;
+
+  React.useEffect(() => {
+    if (!isComplete || hasFinishedRef.current) {
+      return;
+    }
+
+    hasFinishedRef.current = true;
+    finishBreak(appPackage, initialEndsAt);
+  }, [appPackage, finishBreak, initialEndsAt, isComplete]);
+
+  const handleEndEarly = React.useCallback(() => {
+    finishBreak(appPackage, Date.now());
+    router.replace("/(drawer)/(tabs)");
+  }, [appPackage, finishBreak, router]);
+
+  const handleBackToCue = React.useCallback(() => {
+    finishBreak(appPackage, initialEndsAt);
+    router.replace("/(drawer)/(tabs)");
+  }, [appPackage, finishBreak, initialEndsAt, router]);
 
   return (
     <Container className="bg-background px-5 py-8" isScrollable={false}>
@@ -92,7 +122,7 @@ export default function BreakTimerScreen() {
         <View className="gap-3">
           {isComplete ? (
             <Pressable
-              onPress={() => router.replace("/(drawer)/(tabs)")}
+              onPress={handleBackToCue}
               className="rounded-xl bg-break px-4 py-4"
               style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
             >
@@ -102,7 +132,7 @@ export default function BreakTimerScreen() {
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => router.replace("/(drawer)/(tabs)")}
+              onPress={handleEndEarly}
               className="rounded-xl border border-border bg-surface px-4 py-4"
               style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
             >
