@@ -1,17 +1,15 @@
+import { useAuth } from "@clerk/expo";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useThemeColor } from "heroui-native";
-import React, { useCallback } from "react";
+import React from "react";
 import { Pressable, Text } from "react-native";
 
-import { ThemeToggle } from "@/components/theme-toggle";
-
 function DrawerLayout() {
+  const { isLoaded } = useAuth();
   const themeColorForeground = useThemeColor("foreground");
   const themeColorBackground = useThemeColor("background");
-
-  const renderThemeToggle = useCallback(() => <ThemeToggle />, []);
 
   return (
     <Drawer
@@ -22,16 +20,15 @@ function DrawerLayout() {
           fontWeight: "600",
           color: themeColorForeground,
         },
-        headerRight: renderThemeToggle,
         drawerStyle: { backgroundColor: themeColorBackground },
       }}
     >
       <Drawer.Screen
         name="index"
         options={{
-          headerTitle: "Home",
+          headerTitle: "Cue",
           drawerLabel: ({ color, focused }) => (
-            <Text style={{ color: focused ? color : themeColorForeground }}>Home</Text>
+            <Text style={{ color: focused ? color : themeColorForeground }}>Cue</Text>
           ),
           drawerIcon: ({ size, color, focused }) => (
             <Ionicons
@@ -45,9 +42,9 @@ function DrawerLayout() {
       <Drawer.Screen
         name="(tabs)"
         options={{
-          headerTitle: "Tabs",
+          headerTitle: "Studio",
           drawerLabel: ({ color, focused }) => (
-            <Text style={{ color: focused ? color : themeColorForeground }}>Tabs</Text>
+            <Text style={{ color: focused ? color : themeColorForeground }}>Studio</Text>
           ),
           drawerIcon: ({ size, color, focused }) => (
             <MaterialIcons

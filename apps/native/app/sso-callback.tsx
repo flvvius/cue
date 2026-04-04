@@ -6,7 +6,7 @@ export default function SSOCallbackScreen() {
   const { isLoaded, isSignedIn } = useAuth();
 
   if (isLoaded && isSignedIn) {
-    return <Redirect href="/" />;
+    return <Redirect href="/(drawer)" />;
   }
 
   return (

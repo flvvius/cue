@@ -3,8 +3,8 @@ import { api } from "@cue/backend/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { Button, Chip, Separator, Spinner, Surface, useThemeColor } from "heroui-native";
-import { Text, View } from "react-native";
+import { Spinner, useThemeColor } from "heroui-native";
+import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -22,76 +22,111 @@ export default function Home() {
   const isLoading = healthCheck === undefined;
 
   return (
-    <Container className="px-4 pb-4">
-      <View className="py-6 mb-5">
-        <Text className="text-3xl font-semibold text-foreground tracking-tight">
-          Better T Stack
+    <Container className="bg-background px-5 pb-8">
+      <View className="pt-8 pb-6">
+        <Text className="text-[32px] text-foreground tracking-tight font-['Inter_700Bold']">
+          Cue
         </Text>
-        <Text className="text-muted text-sm mt-1">Full-stack TypeScript starter</Text>
+        <Text className="mt-2 max-w-[320px] text-secondary text-base leading-6 font-['Inter_400Regular']">
+          Calm limits, clear nudges, and a screen-time experience that feels protective instead of punishing.
+        </Text>
       </View>
 
-      <Surface variant="secondary" className="p-4 rounded-xl">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-foreground font-medium">System Status</Text>
-          <Chip variant="secondary" color={isConnected ? "success" : "danger"} size="sm">
-            <Chip.Label>{isConnected ? "LIVE" : "OFFLINE"}</Chip.Label>
-          </Chip>
-        </View>
+      <View className="rounded-2xl border border-brand/30 bg-brand/12 px-4 py-4">
+        <Text className="text-accent text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
+          Demo Focus
+        </Text>
+        <Text className="mt-2 text-foreground text-xl leading-7 font-['Inter_600SemiBold']">
+          Everything begins limited by default. Users only choose what to exclude.
+        </Text>
+        <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+          That keeps the product opinionated, calm, and easier to demo. The AI takes care of the session limits for the rest.
+        </Text>
+      </View>
 
-        <Separator className="mb-3" />
-
-        <Surface variant="tertiary" className="p-3 rounded-lg">
-          <View className="flex-row items-center">
-            <View
-              className={`w-2 h-2 rounded-full mr-3 ${isConnected ? "bg-success" : "bg-muted"}`}
-            />
-            <View className="flex-1">
-              <Text className="text-foreground text-sm font-medium">Convex Backend</Text>
-              <Text className="text-muted text-xs mt-0.5">
-                {isLoading
-                  ? "Checking connection..."
-                  : isConnected
-                    ? "Connected to API"
-                    : "API Disconnected"}
-              </Text>
-            </View>
-            {isLoading && <Spinner size="sm" />}
-            {!isLoading && isConnected && (
-              <Ionicons name="checkmark-circle" size={18} color={successColor} />
-            )}
-            {!isLoading && !isConnected && (
-              <Ionicons name="close-circle" size={18} color={dangerColor} />
-            )}
+      <View className="mt-4 rounded-2xl border border-border bg-surface px-4 py-4">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-secondary text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+              System Pulse
+            </Text>
+            <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+              Convex connection
+            </Text>
           </View>
-        </Surface>
-      </Surface>
+          <View
+            className={`rounded-full border px-3 py-1 ${isConnected ? "border-success/30 bg-success/12" : "border-danger/30 bg-danger/12"}`}
+          >
+            <Text
+              className={`text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold'] ${isConnected ? "text-success" : "text-danger"}`}
+            >
+              {isConnected ? "Live" : "Offline"}
+            </Text>
+          </View>
+        </View>
+        <View className="mt-4 flex-row items-center rounded-2xl bg-elevated px-4 py-4">
+          <View
+            className={`mr-3 h-2.5 w-2.5 rounded-full ${isConnected ? "bg-success" : "bg-danger"}`}
+          />
+          <View className="flex-1">
+            <Text className="text-foreground text-sm font-['Inter_600SemiBold']">
+              {isLoading ? "Checking backend..." : isConnected ? "Connected to API" : "Connection lost"}
+            </Text>
+            <Text className="mt-1 text-muted text-xs leading-5 font-['Inter_400Regular']">
+              Private session guidance and live nudges will flow through this channel.
+            </Text>
+          </View>
+          {isLoading && <Spinner size="sm" />}
+          {!isLoading && isConnected && (
+            <Ionicons name="checkmark-circle" size={18} color={successColor} />
+          )}
+          {!isLoading && !isConnected && (
+            <Ionicons name="alert-circle" size={18} color={dangerColor} />
+          )}
+        </View>
+      </View>
 
       {!isLoaded ? (
         <View className="mt-4 items-center">
           <Spinner size="sm" />
         </View>
       ) : isSignedIn ? (
-        <Surface variant="secondary" className="mt-5 p-4 rounded-xl">
+        <View className="mt-4 rounded-2xl border border-border bg-surface px-4 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <Text className="text-foreground font-medium">
+              <Text className="text-secondary text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+                Signed in
+              </Text>
+              <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
                 {user?.emailAddresses[0]?.emailAddress ?? "Signed in"}
               </Text>
-              <Text className="text-muted text-xs mt-0.5">
-                Private: {privateData?.message ?? "Loading private data..."}
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                {privateData?.message ?? "Loading private data..."}
               </Text>
             </View>
             <SignOutButton />
           </View>
-        </Surface>
+        </View>
       ) : (
         <View className="mt-4 gap-3">
-          <Button variant="secondary" onPress={() => router.push("/(auth)/sign-in")}>
-            <Button.Label>Sign In</Button.Label>
-          </Button>
-          <Button variant="tertiary" onPress={() => router.push("/(auth)/sign-up")}>
-            <Button.Label>Sign Up</Button.Label>
-          </Button>
+          <Pressable
+            style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+            onPress={() => router.push("/(auth)/sign-in")}
+            className="rounded-xl bg-brand-strong px-4 py-4"
+          >
+            <Text className="text-center text-foreground text-base font-['Inter_600SemiBold']">
+              Sign in
+            </Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+            onPress={() => router.push("/(auth)/sign-up")}
+            className="rounded-xl border border-border bg-surface px-4 py-4"
+          >
+            <Text className="text-center text-secondary text-base font-['Inter_600SemiBold']">
+              Create account
+            </Text>
+          </Pressable>
         </View>
       )}
     </Container>

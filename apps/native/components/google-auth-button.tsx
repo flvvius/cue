@@ -59,7 +59,7 @@ export function GoogleAuthButton({ label = "Continue with Google" }: Props) {
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color="#111111" />
+          <ActivityIndicator color="#f8fafc" />
         ) : (
           <>
             <Text style={styles.googleMark}>G</Text>
@@ -77,12 +77,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   button: {
-    minHeight: 48,
+    minHeight: 52,
     borderWidth: 1,
-    borderColor: "#d4d4d8",
-    borderRadius: 8,
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 16,
+    borderColor: "#334155",
+    borderRadius: 12,
+    backgroundColor: "#0f172a",
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -96,16 +96,17 @@ const styles = StyleSheet.create({
   },
   googleMark: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#4285F4",
+    fontFamily: "Inter_700Bold",
+    color: "#fbbf24",
   },
   buttonText: {
-    color: "#111111",
+    color: "#f8fafc",
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
   error: {
-    color: "#d32f2f",
+    color: "#f87171",
     fontSize: 12,
+    fontFamily: "Inter_400Regular",
   },
 });
