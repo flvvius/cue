@@ -65,11 +65,14 @@ export function LiveNudgeHost() {
           const recommendation = overview?.recommendations.find(
             (item) => item.appPackage === activeNudge.triggerApp,
           );
-          const appName =
-            recommendation?.appName ??
-            overview?.monitoredApps.find((item) => item.appPackage === activeNudge.triggerApp)?.appName ??
-            activeNudge.triggerApp;
-          const breakDurationMinutes = resolveBreakDurationMinutes(recommendation);
+          const appName = activeNudge.triggerApp === "debug.manual"
+            ? "your current app"
+            : recommendation?.appName ??
+              overview?.monitoredApps.find((item) => item.appPackage === activeNudge.triggerApp)?.appName ??
+              activeNudge.triggerApp;
+          const breakDurationMinutes =
+            activeNudge.breakDurationMinutes ??
+            resolveBreakDurationMinutes(recommendation);
 
           router.push({
             pathname: "/break-timer",

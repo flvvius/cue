@@ -4,6 +4,7 @@ import React from "react";
 import { AppState, Platform } from "react-native";
 
 import { getUsageEvents, hasUsageEventsBridge, type RawUsageEvent, useAndroidUsageAccess } from "@/lib/usage-access";
+import { resolveThresholdBucket, type ThresholdBucket } from "@/lib/enforcement-thresholds";
 import {
   computeSessionsFromUsageEvents,
   mergeSessionsForEnforcement,
@@ -15,6 +16,7 @@ const MERGE_WINDOW_MS = 2 * 60 * 1000;
 type EnforcedSession = ComputedUsageSession & {
   limitMinutes: number;
   progressPercent: number;
+  thresholdBucket: ThresholdBucket;
   isApproachingLimit: boolean;
   isAtLimit: boolean;
   isExceeded: boolean;
@@ -36,14 +38,16 @@ function addLimitState(
   const limitMinutes = recommendationLimits.get(session.appPackage) ?? defaultLimitMinutes;
   const sessionMinutes = session.durationMs / 60000;
   const progress = sessionMinutes / Math.max(1, limitMinutes);
+  const thresholdBucket = resolveThresholdBucket(progress);
 
   return {
     ...session,
     limitMinutes,
     progressPercent: Math.min(100, Math.round(progress * 100)),
-    isApproachingLimit: progress >= 0.8,
-    isAtLimit: progress >= 1,
-    isExceeded: progress >= 1.2,
+    thresholdBucket,
+    isApproachingLimit: thresholdBucket === "approaching" || thresholdBucket === "at_limit" || thresholdBucket === "exceeded",
+    isAtLimit: thresholdBucket === "at_limit" || thresholdBucket === "exceeded",
+    isExceeded: thresholdBucket === "exceeded",
   };
 }
 

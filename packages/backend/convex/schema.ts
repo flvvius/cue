@@ -89,6 +89,14 @@ export default defineSchema({
     ),
     message: v.string(),
     alternative: v.optional(v.string()),
+    thresholdBucket: v.optional(
+      v.union(
+        v.literal("approaching"),
+        v.literal("at_limit"),
+        v.literal("exceeded"),
+      ),
+    ),
+    breakDurationMinutes: v.optional(v.number()),
     status: v.union(
       v.literal("pending"),
       v.literal("shown"),

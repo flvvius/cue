@@ -25,6 +25,12 @@ const nudgeTypeValidator = v.union(
   v.literal("break_time"),
 );
 
+const thresholdBucketValidator = v.union(
+  v.literal("approaching"),
+  v.literal("at_limit"),
+  v.literal("exceeded"),
+);
+
 const responseStatusValidator = v.union(
   v.literal("accepted"),
   v.literal("dismissed"),
@@ -65,6 +71,8 @@ export const queueForCurrentUser = mutation({
     type: nudgeTypeValidator,
     message: v.string(),
     alternative: v.optional(v.string()),
+    thresholdBucket: v.optional(thresholdBucketValidator),
+    breakDurationMinutes: v.optional(v.number()),
     cooldownMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -121,6 +129,8 @@ export const queueForCurrentUser = mutation({
       type: args.type,
       message: args.message,
       alternative: args.alternative,
+      thresholdBucket: args.thresholdBucket,
+      breakDurationMinutes: args.breakDurationMinutes,
       status: "pending",
       createdAt: Date.now(),
     });
