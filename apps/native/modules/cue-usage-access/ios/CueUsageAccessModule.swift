@@ -15,5 +15,9 @@ public class CueUsageAccessModule: Module {
     AsyncFunction("getRecentlyUsedApps") { (_: Double, _: Int) -> [[String: Any]] in
       []
     }
+
+    AsyncFunction("getUsageEvents") { (_: Double, _: Int) -> [[String: Any]] in
+      []
+    }
   }
 }

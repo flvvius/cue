@@ -7,6 +7,7 @@ import { Spinner, useThemeColor } from "heroui-native";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { useUsageSessionSync } from "@/lib/session-sync";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default function Home() {
@@ -15,6 +16,8 @@ export default function Home() {
   const router = useRouter();
   const healthCheck = useQuery(api.healthCheck.get);
   const privateData = useQuery(api.privateData.get);
+  const usageSummary = useQuery(api.usageSessions.summaryForCurrentUser);
+  const sessionSyncStatus = useUsageSessionSync();
   const successColor = useThemeColor("success");
   const dangerColor = useThemeColor("danger");
 
@@ -85,6 +88,74 @@ export default function Home() {
           )}
         </View>
       </View>
+
+      {isSignedIn && (
+        <View className="mt-4 rounded-2xl border border-border bg-surface px-4 py-4">
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-secondary text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+                Usage pipeline
+              </Text>
+              <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+                Raw events to Convex
+              </Text>
+            </View>
+            <View
+              className={`rounded-full border px-3 py-1 ${
+                sessionSyncStatus.bridgeReady
+                  ? "border-success/30 bg-success/12"
+                  : "border-warning/30 bg-warning/12"
+              }`}
+            >
+              <Text
+                className={`text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold'] ${
+                  sessionSyncStatus.bridgeReady ? "text-success" : "text-warning"
+                }`}
+              >
+                {sessionSyncStatus.bridgeReady ? "Ready" : "Rebuild"}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-4 gap-3">
+            <View className="rounded-2xl bg-elevated px-4 py-4">
+              <Text className="text-foreground text-sm font-['Inter_600SemiBold']">
+                {sessionSyncStatus.isSyncing
+                  ? "Syncing usage events..."
+                  : sessionSyncStatus.lastSyncedAt
+                    ? "Usage sessions synced"
+                    : "Waiting for first sync"}
+              </Text>
+              <Text className="mt-1 text-muted text-xs leading-5 font-['Inter_400Regular']">
+                {sessionSyncStatus.bridgeReady
+                  ? `Received ${sessionSyncStatus.lastReceived} sessions, inserted ${sessionSyncStatus.lastInserted}, skipped ${sessionSyncStatus.lastSkipped}.`
+                  : "The installed Android dev build needs one more rebuild to include the raw event bridge."}
+              </Text>
+            </View>
+
+            {usageSummary && (
+              <View className="flex-row gap-3">
+                <View className="flex-1 rounded-2xl bg-elevated px-4 py-4">
+                  <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                    Today
+                  </Text>
+                  <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+                    {usageSummary.todayTotalMinutes} min
+                  </Text>
+                </View>
+                <View className="flex-1 rounded-2xl bg-elevated px-4 py-4">
+                  <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                    Sessions
+                  </Text>
+                  <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+                    {usageSummary.totalSessions}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
 
       {!isLoaded ? (
         <View className="mt-4 items-center">

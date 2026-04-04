@@ -1,6 +1,7 @@
 package expo.modules.cueusageaccess
 
 import android.app.AppOpsManager
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -13,6 +14,40 @@ import android.provider.Settings
 import java.util.Locale
 
 class CueUsageAccessModule : Module() {
+  private fun resolveAppInfo(context: Context, packageName: String): Map<String, Any>? {
+    return try {
+      val applicationInfo = context.packageManager.getApplicationInfo(packageName, 0)
+      val appName = context.packageManager.getApplicationLabel(applicationInfo).toString().trim()
+      val isSystemApp =
+        (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
+          (applicationInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+
+      if (appName.isBlank()) {
+        null
+      } else {
+        mapOf(
+          "appName" to appName,
+          "isSystemApp" to isSystemApp,
+        )
+      }
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  private fun normalizeEventType(eventType: Int): String? {
+    return when (eventType) {
+      UsageEvents.Event.ACTIVITY_RESUMED,
+      UsageEvents.Event.MOVE_TO_FOREGROUND -> "foreground"
+
+      UsageEvents.Event.ACTIVITY_PAUSED,
+      UsageEvents.Event.ACTIVITY_STOPPED,
+      UsageEvents.Event.MOVE_TO_BACKGROUND -> "background"
+
+      else -> null
+    }
+  }
+
   private fun hasUsageAccess(context: Context): Boolean {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
 
@@ -79,28 +114,18 @@ class CueUsageAccessModule : Module() {
             usageStat.totalTimeInForeground > 0
         }
         .mapNotNull { usageStat ->
-          try {
-            val applicationInfo = packageManager.getApplicationInfo(usageStat.packageName, 0)
-            val appName = packageManager.getApplicationLabel(applicationInfo).toString().trim()
-            val isSystemApp =
-              (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
-                (applicationInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+          val appInfo = resolveAppInfo(context, usageStat.packageName) ?: return@mapNotNull null
+          val appName = appInfo["appName"] as String
+          val isSystemApp = appInfo["isSystemApp"] as Boolean
 
-            if (appName.isBlank()) {
-              null
-            } else {
-              mapOf(
-                "appPackage" to usageStat.packageName,
-                "appName" to appName,
-                "lastTimeUsed" to usageStat.lastTimeUsed,
-                "totalTimeInForegroundMs" to usageStat.totalTimeInForeground,
-                "isSystemApp" to isSystemApp,
-                "sortKey" to appName.lowercase(Locale.ROOT),
-              )
-            }
-          } catch (_: Exception) {
-            null
-          }
+          mapOf(
+            "appPackage" to usageStat.packageName,
+            "appName" to appName,
+            "lastTimeUsed" to usageStat.lastTimeUsed,
+            "totalTimeInForegroundMs" to usageStat.totalTimeInForeground,
+            "isSystemApp" to isSystemApp,
+            "sortKey" to appName.lowercase(Locale.ROOT),
+          )
         }
         .groupBy { it["appPackage"] as String }
         .values
@@ -115,6 +140,53 @@ class CueUsageAccessModule : Module() {
         .toList()
 
       recentApps
+    }
+
+    AsyncFunction("getUsageEvents") { sinceMs: Double, limit: Int ->
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      if (!hasUsageAccess(context)) {
+        return@AsyncFunction emptyList<Map<String, Any>>()
+      }
+
+      val usageStatsManager =
+        context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+          ?: return@AsyncFunction emptyList<Map<String, Any>>()
+
+      val now = System.currentTimeMillis()
+      val startTime = sinceMs.toLong().coerceAtMost(now)
+      val usageEvents = usageStatsManager.queryEvents(startTime, now)
+      val event = UsageEvents.Event()
+      val appInfoCache = mutableMapOf<String, Map<String, Any>?>()
+      val rawEvents = mutableListOf<Map<String, Any>>()
+      val safeLimit = limit.coerceAtLeast(1)
+
+      while (usageEvents.hasNextEvent() && rawEvents.size < safeLimit) {
+        usageEvents.getNextEvent(event)
+
+        val packageName = event.packageName ?: continue
+        if (packageName == context.packageName) {
+          continue
+        }
+
+        val normalizedEventType = normalizeEventType(event.eventType) ?: continue
+        val appInfo = appInfoCache.getOrPut(packageName) {
+          resolveAppInfo(context, packageName)
+        } ?: continue
+
+        rawEvents.add(
+          mapOf(
+            "appPackage" to packageName,
+            "appName" to (appInfo["appName"] as String),
+            "timestamp" to event.timeStamp,
+            "eventType" to normalizedEventType,
+            "isSystemApp" to (appInfo["isSystemApp"] as Boolean),
+          )
+        )
+      }
+
+      rawEvents.sortedBy { it["timestamp"] as Long }
     }
   }
 }

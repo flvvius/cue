@@ -8,6 +8,9 @@ const CueUsageAccessModule: CueUsageAccessNativeModule = {
   async getRecentlyUsedApps() {
     return [];
   },
+  async getUsageEvents() {
+    return [];
+  },
 };
 
 export default CueUsageAccessModule;

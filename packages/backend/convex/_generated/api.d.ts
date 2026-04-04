@@ -8,8 +8,12 @@
  * @module
  */
 
+import type * as alternatives from "../alternatives.js";
+import type * as dashboard from "../dashboard.js";
+import type * as excludedApps from "../excludedApps.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as privateData from "../privateData.js";
+import type * as usageSessions from "../usageSessions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -19,8 +23,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  alternatives: typeof alternatives;
+  dashboard: typeof dashboard;
+  excludedApps: typeof excludedApps;
   healthCheck: typeof healthCheck;
   privateData: typeof privateData;
+  usageSessions: typeof usageSessions;
   users: typeof users;
 }>;
 

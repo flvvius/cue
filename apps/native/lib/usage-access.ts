@@ -11,6 +11,14 @@ export type RecentUsageApp = {
   isSystemApp: boolean;
 };
 
+export type RawUsageEvent = {
+  appPackage: string;
+  appName: string;
+  timestamp: number;
+  eventType: "foreground" | "background";
+  isSystemApp: boolean;
+};
+
 type CueUsageAccessModuleShape = {
   isUsageAccessGranted?: () => boolean;
   openUsageAccessSettings?: () => Promise<void>;
@@ -18,6 +26,10 @@ type CueUsageAccessModuleShape = {
     sinceMs: number,
     limit: number,
   ) => Promise<RecentUsageApp[]>;
+  getUsageEvents?: (
+    sinceMs: number,
+    limit: number,
+  ) => Promise<RawUsageEvent[]>;
 };
 
 function getUsageAccessModule(): CueUsageAccessModuleShape | null {
@@ -50,6 +62,10 @@ function hasUsageAccessMethods(module: CueUsageAccessModuleShape | null) {
 
 function hasRecentAppsMethod(module: CueUsageAccessModuleShape | null) {
   return Boolean(module && typeof module.getRecentlyUsedApps === "function");
+}
+
+function hasUsageEventsMethod(module: CueUsageAccessModuleShape | null) {
+  return Boolean(module && typeof module.getUsageEvents === "function");
 }
 
 type UsageAccessState = {
@@ -143,4 +159,25 @@ export async function getRecentlyUsedApps(options?: {
 
 export function hasRecentAppsAccessBridge() {
   return hasRecentAppsMethod(getUsageAccessModule());
+}
+
+export async function getUsageEvents(options?: {
+  hours?: number;
+  limit?: number;
+}): Promise<RawUsageEvent[]> {
+  const module = getUsageAccessModule();
+  if (Platform.OS !== "android" || !hasUsageEventsMethod(module)) {
+    return [];
+  }
+
+  const hours = Math.max(1, options?.hours ?? 12);
+  const limit = Math.max(1, options?.limit ?? 5000);
+  const now = Date.now();
+  const sinceMs = now - hours * 60 * 60 * 1000;
+
+  return await module!.getUsageEvents!(sinceMs, limit);
+}
+
+export function hasUsageEventsBridge() {
+  return hasUsageEventsMethod(getUsageAccessModule());
 }
