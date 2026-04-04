@@ -58,7 +58,7 @@ export default function TabTwo() {
         ) : null}
 
         {usageSummary?.recentSessions?.length ? (
-          usageSummary.recentSessions.map((session) => (
+          usageSummary.recentSessions.map((session: any) => (
             <View
               key={`${session.appPackage}-${session.startTime}`}
               className="rounded-2xl border border-border bg-surface p-5"
@@ -105,7 +105,7 @@ export default function TabTwo() {
           </Text>
           <View className="mt-4 gap-3">
             {breakSummary?.recentBreaks?.length ? (
-              breakSummary.recentBreaks.map((item) => (
+              breakSummary.recentBreaks.map((item: any) => (
                 <View
                   key={String(item._id)}
                   className="rounded-2xl border border-border bg-background px-4 py-4"

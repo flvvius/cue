@@ -22,6 +22,9 @@ export default function Home() {
   const usageAccess = useAndroidUsageAccess();
   const { activeBreak, isHydrated } = useBreakState();
   const [showExcludedApps, setShowExcludedApps] = React.useState(false);
+  const monitoredApps = overview?.monitoredApps ?? [];
+  const recommendations = overview?.recommendations ?? [];
+  const excludedApps = overview?.excludedApps ?? [];
 
   const acceptedNudges = overview?.nudgeStats.accepted ?? 0;
   const dismissedNudges = overview?.nudgeStats.dismissed ?? 0;
@@ -29,10 +32,10 @@ export default function Home() {
   const acceptedRatio = totalNudges > 0
     ? Math.round((acceptedNudges / totalNudges) * 100)
     : 0;
-  const todayMinutes = overview?.monitoredApps.reduce((sum, app) => sum + app.totalMinutes, 0) ?? 0;
-  const todaySessions = overview?.monitoredApps.reduce((sum, app) => sum + app.sessionCount, 0) ?? 0;
-  const fastTestModeActive = (overview?.recommendations ?? []).some(
-    (recommendation) => recommendation.sessionLimitMinutes <= 1,
+  const todayMinutes = monitoredApps.reduce((sum: number, app: any) => sum + app.totalMinutes, 0);
+  const todaySessions = monitoredApps.reduce((sum: number, app: any) => sum + app.sessionCount, 0);
+  const fastTestModeActive = recommendations.some(
+    (recommendation: any) => recommendation.sessionLimitMinutes <= 1,
   );
   const blockingBridgeReady = hasBlockingMonitorBridge();
   const blockerArmed = usageAccess.granted && usageAccess.overlayGranted && blockingBridgeReady && isHydrated;
@@ -86,8 +89,8 @@ export default function Home() {
             Progress against limits
           </Text>
           <View className="mt-4 gap-4">
-            {overview?.monitoredApps.length ? (
-              overview.monitoredApps.map((app) => (
+            {monitoredApps.length ? (
+              monitoredApps.map((app: any) => (
                 <View key={app.appPackage}>
                   <View className="flex-row items-center justify-between">
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
@@ -131,8 +134,8 @@ export default function Home() {
             </View>
           ) : null}
           <View className="mt-4 gap-4">
-            {overview?.recommendations.length ? (
-              overview.recommendations.map((recommendation) => (
+            {recommendations.length ? (
+              recommendations.map((recommendation: any) => (
                 <View
                   key={`${recommendation.appPackage}-${recommendation.effectiveDate}`}
                   className="rounded-2xl border border-border bg-background px-4 py-4"
@@ -170,7 +173,7 @@ export default function Home() {
                 Excluded apps
               </Text>
               <Text className="mt-2 text-foreground text-2xl font-['Inter_600SemiBold']">
-                {overview?.excludedApps.length ?? 0} apps ignored
+                {excludedApps.length} apps ignored
               </Text>
             </View>
             <Pressable
@@ -187,8 +190,8 @@ export default function Home() {
           </Text>
           {showExcludedApps ? (
             <View className="mt-4 gap-3">
-              {overview?.excludedApps.length ? (
-                overview.excludedApps.map((app) => (
+              {excludedApps.length ? (
+                excludedApps.map((app: any) => (
                   <View
                     key={app.appPackage}
                     className="rounded-2xl border border-border bg-background px-4 py-4"

@@ -141,8 +141,8 @@ export function useEnforcementPreview() {
 
   const recommendationLimits = React.useMemo(
     () =>
-      new Map(
-        (overview?.recommendations ?? []).map((recommendation) => [
+      new Map<string, number>(
+        (overview?.recommendations ?? []).map((recommendation: any) => [
           recommendation.appPackage,
           recommendation.sessionLimitMinutes,
         ]),
@@ -161,7 +161,7 @@ export function useEnforcementPreview() {
 
     return buildPreviewFromEvents(
       rawEvents,
-      new Set((overview.excludedApps ?? []).map((app) => app.appPackage)),
+      new Set((overview.excludedApps ?? []).map((app: any) => app.appPackage)),
       sessionResetCutoffs,
       recommendationLimits,
       overview.defaultLimitMinutes,

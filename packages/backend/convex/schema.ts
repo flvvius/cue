@@ -123,6 +123,29 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_user_time", ["userId", "createdAt"]),
 
+  aiExportRuns: defineTable({
+    userId: v.id("users"),
+    endpoint: v.optional(v.string()),
+    requestedAt: v.number(),
+    sent: v.boolean(),
+    reason: v.string(),
+    status: v.optional(v.number()),
+    sessionCount: v.number(),
+    excludedCount: v.number(),
+    recommendationCount: v.number(),
+    payload: v.any(),
+    responsePreview: v.optional(v.string()),
+  }).index("by_user_time", ["userId", "requestedAt"]),
+
+  aiWebhookEvents: defineTable({
+    clerkId: v.string(),
+    receivedAt: v.number(),
+    stored: v.boolean(),
+    effectiveDate: v.optional(v.string()),
+    recommendationCount: v.number(),
+    error: v.optional(v.string()),
+  }).index("by_clerk_time", ["clerkId", "receivedAt"]),
+
   demoSessions: defineTable({
     code: v.string(),
     active: v.boolean(),

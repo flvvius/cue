@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 
 async function getCurrentIdentity(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
@@ -26,6 +26,15 @@ export const current = query({
     }
 
     return await getUserByClerkId(ctx, identity.subject);
+  },
+});
+
+export const getByClerkIdInternal = internalQuery({
+  args: {
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await getUserByClerkId(ctx, args.clerkId);
   },
 });
 

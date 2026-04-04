@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aiOps from "../aiOps.js";
 import type * as aiPipeline from "../aiPipeline.js";
 import type * as aiPipelinePayload from "../aiPipelinePayload.js";
 import type * as alternatives from "../alternatives.js";
@@ -18,6 +19,8 @@ import type * as demoData from "../demoData.js";
 import type * as excludedApps from "../excludedApps.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as nudgeGeneration from "../nudgeGeneration.js";
+import type * as nudgeRequests from "../nudgeRequests.js";
 import type * as nudges from "../nudges.js";
 import type * as privateData from "../privateData.js";
 import type * as recommendations from "../recommendations.js";
@@ -31,6 +34,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiOps: typeof aiOps;
   aiPipeline: typeof aiPipeline;
   aiPipelinePayload: typeof aiPipelinePayload;
   alternatives: typeof alternatives;
@@ -41,6 +45,8 @@ declare const fullApi: ApiFromModules<{
   excludedApps: typeof excludedApps;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  nudgeGeneration: typeof nudgeGeneration;
+  nudgeRequests: typeof nudgeRequests;
   nudges: typeof nudges;
   privateData: typeof privateData;
   recommendations: typeof recommendations;

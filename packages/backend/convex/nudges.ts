@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 async function getCurrentIdentity(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
@@ -65,6 +65,77 @@ export const getActiveForCurrentUser = query({
   },
 });
 
+async function queueNudgeForUser(params: {
+  ctx: any;
+  userId: string;
+  triggerApp: string;
+  type: "limit_warning" | "pattern_break" | "session_check" | "ai_limit" | "break_time";
+  message: string;
+  alternative?: string;
+  thresholdBucket?: "approaching" | "at_limit" | "exceeded";
+  breakDurationMinutes?: number;
+  cooldownMinutes?: number;
+}) {
+  const pendingNudges = await params.ctx.db
+    .query("nudges")
+    .withIndex("by_user_status", (q: any) => q.eq("userId", params.userId).eq("status", "pending"))
+    .collect();
+
+  const existingPending = pendingNudges.find(
+    (nudge: any) => nudge.triggerApp === params.triggerApp && nudge.type === params.type,
+  );
+  if (existingPending) {
+    return {
+      created: false,
+      reason: "pending_exists",
+      nudgeId: existingPending._id,
+    };
+  }
+
+  const cooldownMinutes = Math.max(0, params.cooldownMinutes ?? 20);
+  const cooldownBoundary = Date.now() - cooldownMinutes * 60 * 1000;
+
+  const recentNudges = (await params.ctx.db
+    .query("nudges")
+    .withIndex("by_user_time", (q: any) => q.eq("userId", params.userId))
+    .collect())
+    .filter(
+      (nudge: any) =>
+        nudge.triggerApp === params.triggerApp &&
+        nudge.type === params.type &&
+        nudge.createdAt >= cooldownBoundary,
+    );
+
+  if (recentNudges.length > 0) {
+    const latestRecent = [...recentNudges].sort(
+      (left: any, right: any) => right.createdAt - left.createdAt,
+    )[0]!;
+    return {
+      created: false,
+      reason: "cooldown_active",
+      nudgeId: latestRecent._id,
+    };
+  }
+
+  const nudgeId = await params.ctx.db.insert("nudges", {
+    userId: params.userId,
+    triggerApp: params.triggerApp,
+    type: params.type,
+    message: params.message,
+    alternative: params.alternative,
+    thresholdBucket: params.thresholdBucket,
+    breakDurationMinutes: params.breakDurationMinutes,
+    status: "pending",
+    createdAt: Date.now(),
+  });
+
+  return {
+    created: true,
+    reason: "created",
+    nudgeId,
+  };
+}
+
 export const queueForCurrentUser = mutation({
   args: {
     triggerApp: v.string(),
@@ -82,48 +153,8 @@ export const queueForCurrentUser = mutation({
       throw new Error("User record not found");
     }
 
-    const pendingNudges = await ctx.db
-      .query("nudges")
-      .withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", "pending"))
-      .collect();
-
-    const existingPending = pendingNudges.find(
-      (nudge) => nudge.triggerApp === args.triggerApp && nudge.type === args.type,
-    );
-    if (existingPending) {
-      return {
-        created: false,
-        reason: "pending_exists",
-        nudgeId: existingPending._id,
-      };
-    }
-
-    const cooldownMinutes = Math.max(0, args.cooldownMinutes ?? 20);
-    const cooldownBoundary = Date.now() - cooldownMinutes * 60 * 1000;
-
-    const recentNudges = (await ctx.db
-      .query("nudges")
-      .withIndex("by_user_time", (q) => q.eq("userId", user._id))
-      .collect())
-      .filter(
-        (nudge) =>
-          nudge.triggerApp === args.triggerApp &&
-          nudge.type === args.type &&
-          nudge.createdAt >= cooldownBoundary,
-      );
-
-    if (recentNudges.length > 0) {
-      const latestRecent = [...recentNudges].sort(
-        (left, right) => right.createdAt - left.createdAt,
-      )[0]!;
-      return {
-        created: false,
-        reason: "cooldown_active",
-        nudgeId: latestRecent._id,
-      };
-    }
-
-    const nudgeId = await ctx.db.insert("nudges", {
+    return await queueNudgeForUser({
+      ctx,
       userId: user._id,
       triggerApp: args.triggerApp,
       type: args.type,
@@ -131,15 +162,34 @@ export const queueForCurrentUser = mutation({
       alternative: args.alternative,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
-      status: "pending",
-      createdAt: Date.now(),
+      cooldownMinutes: args.cooldownMinutes,
     });
+  },
+});
 
-    return {
-      created: true,
-      reason: "created",
-      nudgeId,
-    };
+export const queueGeneratedForUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+    triggerApp: v.string(),
+    type: nudgeTypeValidator,
+    message: v.string(),
+    alternative: v.optional(v.string()),
+    thresholdBucket: v.optional(thresholdBucketValidator),
+    breakDurationMinutes: v.optional(v.number()),
+    cooldownMinutes: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await queueNudgeForUser({
+      ctx,
+      userId: args.userId,
+      triggerApp: args.triggerApp,
+      type: args.type,
+      message: args.message,
+      alternative: args.alternative,
+      thresholdBucket: args.thresholdBucket,
+      breakDurationMinutes: args.breakDurationMinutes,
+      cooldownMinutes: args.cooldownMinutes,
+    });
   },
 });
 

@@ -87,8 +87,8 @@ export default function OnboardingExclusionsScreen() {
 
     const initialSelection =
       existingExclusions.length > 0
-        ? new Set(existingExclusions.map((app) => app.appPackage))
-        : new Set(recentApps.filter(shouldDefaultExclude).map((app) => app.appPackage));
+        ? new Set<string>(existingExclusions.map((app: any) => app.appPackage))
+        : new Set<string>(recentApps.filter(shouldDefaultExclude).map((app: RecentUsageApp) => app.appPackage));
 
     setSelectedPackages(initialSelection);
     initializedSelectionRef.current = true;

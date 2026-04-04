@@ -48,9 +48,9 @@ export function useAndroidBlockingMonitor() {
       await setBlockingConfig({
         enabled: true,
         defaultLimitMinutes: overview.defaultLimitMinutes,
-        excludedPackages: overview.excludedApps.map((app) => app.appPackage),
+        excludedPackages: overview.excludedApps.map((app: any) => app.appPackage),
         sessionResetCutoffs,
-        appLimits: overview.recommendations.map((recommendation) => ({
+        appLimits: overview.recommendations.map((recommendation: any) => ({
           appPackage: recommendation.appPackage,
           appName: recommendation.appName,
           limitMinutes: recommendation.sessionLimitMinutes,

@@ -99,10 +99,39 @@ http.route({
       );
     }
 
-    const result = await ctx.runMutation((internal as any).recommendations.storeForClerkUser, {
+    let result;
+    try {
+      result = await ctx.runMutation((internal as any).recommendations.storeForClerkUser, {
+        clerkId: parsedPayload.data.userId,
+        effectiveDate: parsedPayload.data.effectiveDate,
+        recommendations: parsedPayload.data.recommendations,
+      });
+    } catch (error) {
+      await ctx.runMutation((internal as any).aiOps.recordWebhookEvent, {
+        clerkId: parsedPayload.data.userId,
+        receivedAt: Date.now(),
+        stored: false,
+        effectiveDate: parsedPayload.data.effectiveDate,
+        recommendationCount: parsedPayload.data.recommendations.length,
+        error: error instanceof Error ? error.message : "Unable to store recommendations",
+      });
+
+      return jsonResponse(
+        {
+          ok: false,
+          error: error instanceof Error ? error.message : "Unable to store recommendations",
+        },
+        { status: 400 },
+      );
+    }
+
+    await ctx.runMutation((internal as any).aiOps.recordWebhookEvent, {
       clerkId: parsedPayload.data.userId,
+      receivedAt: Date.now(),
+      stored: true,
       effectiveDate: parsedPayload.data.effectiveDate,
-      recommendations: parsedPayload.data.recommendations,
+      recommendationCount: parsedPayload.data.recommendations.length,
+      error: undefined,
     });
 
     return jsonResponse({

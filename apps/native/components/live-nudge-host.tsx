@@ -68,12 +68,12 @@ export function LiveNudgeHost() {
 
         if (status === "accepted") {
           const recommendation = overview?.recommendations.find(
-            (item) => item.appPackage === activeNudge.triggerApp,
+            (item: any) => item.appPackage === activeNudge.triggerApp,
           );
           const appName = activeNudge.triggerApp === "debug.manual"
             ? "your current app"
             : recommendation?.appName ??
-              overview?.monitoredApps.find((item) => item.appPackage === activeNudge.triggerApp)?.appName ??
+              overview?.monitoredApps.find((item: any) => item.appPackage === activeNudge.triggerApp)?.appName ??
               activeNudge.triggerApp;
           const breakDurationMinutes =
             activeNudge.breakDurationMinutes ??

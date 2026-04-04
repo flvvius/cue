@@ -118,15 +118,24 @@ export function BreakStateProvider({ children }: React.PropsWithChildren) {
 
   const finishBreak = React.useCallback((appPackage: string, cutoffTimestamp: number) => {
     const currentBreak = activeBreak?.appPackage === appPackage ? activeBreak : null;
+    const endedEarly = currentBreak ? cutoffTimestamp < currentBreak.endsAt : false;
     setActiveBreak((currentBreak) => (currentBreak?.appPackage === appPackage ? null : currentBreak));
-    setSessionResetCutoffs((currentState) => ({
-      ...currentState,
-      [appPackage]: cutoffTimestamp,
-    }));
+    setSessionResetCutoffs((currentState) => {
+      if (endedEarly) {
+        const nextState = { ...currentState };
+        delete nextState[appPackage];
+        return nextState;
+      }
+
+      return {
+        ...currentState,
+        [appPackage]: cutoffTimestamp,
+      };
+    });
     void finishBreakForCurrentUser({
       appPackage,
       finishedAt: cutoffTimestamp,
-      endedEarly: currentBreak ? cutoffTimestamp < currentBreak.endsAt : false,
+      endedEarly,
     });
   }, [activeBreak, finishBreakForCurrentUser]);
 

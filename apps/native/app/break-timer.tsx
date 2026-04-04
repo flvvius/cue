@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 
 import { Container } from "@/components/container";
 import { useBreakState } from "@/contexts/break-state-context";
@@ -37,6 +38,7 @@ export default function BreakTimerScreen() {
   );
   const [remainingMs, setRemainingMs] = React.useState(() => Math.max(0, initialEndsAt - Date.now()));
   const hasFinishedRef = React.useRef(false);
+  const totalDurationMs = durationMinutes * 60 * 1000;
 
   React.useEffect(() => {
     hasFinishedRef.current = false;
@@ -52,6 +54,12 @@ export default function BreakTimerScreen() {
   }, [initialEndsAt]);
 
   const isComplete = remainingMs <= 0;
+  const progress = isComplete ? 1 : Math.min(1, (totalDurationMs - remainingMs) / totalDurationMs);
+  const ringSize = 232;
+  const ringStroke = 12;
+  const ringRadius = (ringSize - ringStroke) / 2;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const progressStrokeOffset = ringCircumference * (1 - progress);
 
   React.useEffect(() => {
     if (!isComplete || hasFinishedRef.current) {
@@ -90,18 +98,48 @@ export default function BreakTimerScreen() {
         </View>
 
         <View className="items-center">
-          <View className="h-52 w-52 items-center justify-center rounded-full border border-break/30 bg-break/12">
-            <Text className="text-break text-5xl font-['Inter_700Bold']">
-              {formatRemainingTime(remainingMs)}
-            </Text>
-            <Text className="mt-3 text-sm text-secondary font-['Inter_500Medium']">
-              {isComplete ? "Ready when you are" : "Remaining"}
-            </Text>
+          <View className="items-center justify-center">
+            <Svg width={ringSize} height={ringSize} className="absolute">
+              <Circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={ringRadius}
+                stroke="#312e81"
+                strokeOpacity={0.35}
+                strokeWidth={ringStroke}
+                fill="transparent"
+              />
+              <Circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={ringRadius}
+                stroke="#a78bfa"
+                strokeWidth={ringStroke}
+                fill="transparent"
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={progressStrokeOffset}
+                strokeLinecap="round"
+                rotation="-90"
+                origin={`${ringSize / 2}, ${ringSize / 2}`}
+              />
+            </Svg>
+
+            <View className="h-56 w-56 items-center justify-center rounded-full border border-break/20 bg-break/12">
+              <Text className="text-break text-5xl font-['Inter_700Bold']">
+                {formatRemainingTime(remainingMs)}
+              </Text>
+              <Text className="mt-3 text-sm text-secondary font-['Inter_500Medium']">
+                {isComplete ? "Ready when you are" : "Remaining"}
+              </Text>
+              <Text className="mt-1 text-xs text-muted font-['Inter_500Medium']">
+                {isComplete ? "Reset protected" : `${Math.round(progress * 100)}% complete`}
+              </Text>
+            </View>
           </View>
 
-          <View className="mt-8 w-full rounded-2xl border border-border bg-surface px-5 py-5">
+          <View className="mt-8 w-full rounded-3xl border border-border bg-surface px-5 py-5">
             <View className="flex-row items-start gap-3">
-              <View className="mt-1 h-10 w-10 items-center justify-center rounded-full bg-accent/14">
+              <View className="mt-1 h-11 w-11 items-center justify-center rounded-full bg-accent/14">
                 <Ionicons name="sparkles-outline" size={20} color="#fbbf24" />
               </View>
               <View className="flex-1">
@@ -117,29 +155,43 @@ export default function BreakTimerScreen() {
               </View>
             </View>
           </View>
+
+          <View className="mt-4 w-full rounded-3xl border border-break/25 bg-break/10 px-5 py-4">
+            <Text className="text-break text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+              What happens after this
+            </Text>
+            <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
+              Cue resets the session for {appName}, so coming back later starts clean instead of continuing the old spiral.
+            </Text>
+          </View>
         </View>
 
         <View className="gap-3">
           {isComplete ? (
             <Pressable
               onPress={handleBackToCue}
-              className="rounded-xl bg-break px-4 py-4"
-              style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+              className="rounded-2xl px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, backgroundColor: "#a78bfa" }]}
             >
               <Text className="text-center text-base text-background font-['Inter_600SemiBold']">
                 Back to Cue
               </Text>
             </Pressable>
           ) : (
-            <Pressable
-              onPress={handleEndEarly}
-              className="rounded-xl border border-border bg-surface px-4 py-4"
-              style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
-            >
-              <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
-                End break early
+            <View className="gap-3">
+              <Text className="text-center text-xs leading-5 text-muted font-['Inter_500Medium']">
+                Ending early will drop the break, but it will not reset this session yet.
               </Text>
-            </Pressable>
+              <Pressable
+                onPress={handleEndEarly}
+                className="rounded-2xl border border-border bg-surface px-4 py-4"
+                style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+              >
+                <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
+                  End break early
+                </Text>
+              </Pressable>
+            </View>
           )}
         </View>
       </View>

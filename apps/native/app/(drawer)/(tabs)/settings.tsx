@@ -11,6 +11,8 @@ export default function SettingsTab() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const alternatives = useQuery(api.alternatives.listForCurrentUser);
   const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
+  const exportRuns = useQuery((api as any).aiOps.recentExportRunsForCurrentUser);
+  const webhookEvents = useQuery((api as any).aiOps.recentWebhookEventsForCurrentUser);
   const queueNudge = useMutation(api.nudges.queueForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
@@ -205,7 +207,7 @@ export default function SettingsTab() {
             {overview?.excludedApps.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(overview?.excludedApps ?? []).slice(0, 4).map((app) => app.appName).join(", ") || "None yet"}
+            {(overview?.excludedApps ?? []).slice(0, 4).map((app: any) => app.appName).join(", ") || "None yet"}
           </Text>
         </View>
 
@@ -217,7 +219,7 @@ export default function SettingsTab() {
             {alternatives?.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(alternatives ?? []).slice(0, 4).map((alternative) => alternative.activity).join(", ") || "None yet"}
+            {(alternatives ?? []).slice(0, 4).map((alternative: any) => alternative.activity).join(", ") || "None yet"}
           </Text>
         </View>
 
@@ -266,7 +268,7 @@ export default function SettingsTab() {
             {overview?.recommendations.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
+            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation: any) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
           <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             Fast test mode seeds 1-minute limits for a few monitored apps so you can hit real thresholds and blocker states almost immediately.
@@ -329,6 +331,44 @@ export default function SettingsTab() {
               </Text>
             </Pressable>
           </View>
+          {exportRuns?.runs?.[0] ? (
+            <View className="mt-4 rounded-2xl border border-border bg-background px-4 py-4">
+              <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                Latest export
+              </Text>
+              <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
+                {exportRuns.runs[0].sent ? "Sent to AWS endpoint" : "Not sent yet"}
+              </Text>
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                {exportRuns.runs[0].sessionCount} sessions • {exportRuns.runs[0].excludedCount} exclusions • {exportRuns.runs[0].recommendationCount} current recs
+              </Text>
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                {exportRuns.runs[0].endpoint ?? "No endpoint configured"}
+              </Text>
+              <Text className="mt-2 text-muted text-xs font-['Inter_400Regular']">
+                {new Date(exportRuns.runs[0].requestedAt).toLocaleString()} • {exportRuns.runs[0].reason}
+                {exportRuns.runs[0].status ? ` • HTTP ${exportRuns.runs[0].status}` : ""}
+              </Text>
+            </View>
+          ) : null}
+          {webhookEvents?.events?.[0] ? (
+            <View className="mt-3 rounded-2xl border border-border bg-background px-4 py-4">
+              <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                Latest webhook
+              </Text>
+              <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
+                {webhookEvents.events[0].stored ? "Recommendations stored" : "Webhook failed"}
+              </Text>
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                {webhookEvents.events[0].recommendationCount} recommendations
+                {webhookEvents.events[0].effectiveDate ? ` • ${webhookEvents.events[0].effectiveDate}` : ""}
+              </Text>
+              <Text className="mt-2 text-muted text-xs font-['Inter_400Regular']">
+                {new Date(webhookEvents.events[0].receivedAt).toLocaleString()}
+                {webhookEvents.events[0].error ? ` • ${webhookEvents.events[0].error}` : ""}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View className="rounded-2xl border border-border bg-surface p-5">
