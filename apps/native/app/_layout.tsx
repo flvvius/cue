@@ -22,6 +22,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { LiveNudgeHost } from "@/components/live-nudge-host";
+import { LiveRecommendationHost } from "@/components/live-recommendation-host";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { BreakStateProvider } from "@/contexts/break-state-context";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
@@ -169,6 +170,7 @@ export default function Layout() {
                 <HeroUINativeProvider>
                   <View className="flex-1">
                     <NavigationGate />
+                    <LiveRecommendationHost />
                     <LiveNudgeHost />
                   </View>
                 </HeroUINativeProvider>
