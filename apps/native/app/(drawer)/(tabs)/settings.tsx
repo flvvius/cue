@@ -14,6 +14,7 @@ export default function SettingsTab() {
   const queueNudge = useMutation(api.nudges.queueForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
+  const seedFastTestRecommendations = useMutation(api.recommendations.seedFastTestForCurrentUser);
   const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
   const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
   const seedDemoDataForCurrentUser = useMutation((api as any).demoData.seedForCurrentUser);
@@ -22,6 +23,7 @@ export default function SettingsTab() {
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
   const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
+  const [isSeedingFastTestRecommendations, setIsSeedingFastTestRecommendations] = React.useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = React.useState(false);
   const [isTriggeringExport, setIsTriggeringExport] = React.useState(false);
   const [isSeedingDemoData, setIsSeedingDemoData] = React.useState(false);
@@ -106,6 +108,22 @@ export default function SettingsTab() {
       setIsClearingRecommendations(false);
     }
   }, [clearRecommendations, isClearingRecommendations]);
+
+  const handleSeedFastTestRecommendations = React.useCallback(async () => {
+    if (isSeedingFastTestRecommendations) {
+      return;
+    }
+
+    setIsSeedingFastTestRecommendations(true);
+    try {
+      const result = await seedFastTestRecommendations({});
+      setDebugStatus(
+        `Seeded fast-test 1-minute limits for ${result.apps.join(", ")} on ${result.effectiveDate}.`,
+      );
+    } finally {
+      setIsSeedingFastTestRecommendations(false);
+    }
+  }, [isSeedingFastTestRecommendations, seedFastTestRecommendations]);
 
   const handleTriggerExport = React.useCallback(async () => {
     if (isTriggeringExport) {
@@ -250,6 +268,9 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {(overview?.recommendations ?? []).slice(0, 3).map((recommendation) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
+          <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Fast test mode seeds 1-minute limits for a few monitored apps so you can hit real thresholds and blocker states almost immediately.
+          </Text>
           <View className="mt-4 flex-row gap-3">
             <Pressable
               onPress={() => void handleSeedRecommendations()}
@@ -261,6 +282,18 @@ export default function SettingsTab() {
                 {isSeedingRecommendations ? "Seeding..." : "Seed fallback recs"}
               </Text>
             </Pressable>
+            <Pressable
+              onPress={() => void handleSeedFastTestRecommendations()}
+              disabled={isSeedingFastTestRecommendations}
+              className="flex-1 rounded-xl border border-warning/30 bg-warning/12 px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isSeedingFastTestRecommendations ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-warning font-['Inter_600SemiBold']">
+                {isSeedingFastTestRecommendations ? "Arming..." : "Seed fast test"}
+              </Text>
+            </Pressable>
+          </View>
+          <View className="mt-3 flex-row gap-3">
             <Pressable
               onPress={() => void handleClearRecommendations()}
               disabled={isClearingRecommendations}

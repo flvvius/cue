@@ -40,6 +40,20 @@ export default defineSchema({
     .index("by_user_time", ["userId", "startTime"])
     .index("by_user_app_time", ["userId", "appPackage", "startTime"]),
 
+  breaks: defineTable({
+    userId: v.id("users"),
+    appPackage: v.string(),
+    appName: v.string(),
+    alternative: v.optional(v.string()),
+    startedAt: v.number(),
+    plannedEndsAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    endedEarly: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index("by_user_start", ["userId", "startedAt"])
+    .index("by_user_app_start", ["userId", "appPackage", "startedAt"]),
+
   patterns: defineTable({
     userId: v.id("users"),
     appPackage: v.string(),

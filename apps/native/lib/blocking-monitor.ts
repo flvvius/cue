@@ -17,7 +17,7 @@ export function useAndroidBlockingMonitor() {
   const { isLoaded, isSignedIn } = useAuth();
   const currentUser = useQuery(api.users.current);
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
-  const { activeBreak, sessionResetCutoffs } = useBreakState();
+  const { activeBreak, isHydrated, sessionResetCutoffs } = useBreakState();
   const usageAccess = useAndroidUsageAccess();
 
   React.useEffect(() => {
@@ -33,6 +33,7 @@ export function useAndroidBlockingMonitor() {
         !isSignedIn ||
         !currentUser ||
         !currentUser.onboardingComplete ||
+        !isHydrated ||
         !overview ||
         !usageAccess.isAvailable ||
         !usageAccess.granted ||
@@ -75,6 +76,7 @@ export function useAndroidBlockingMonitor() {
   }, [
     activeBreak,
     currentUser,
+    isHydrated,
     isLoaded,
     isSignedIn,
     overview,

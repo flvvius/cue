@@ -23,6 +23,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { LiveNudgeHost } from "@/components/live-nudge-host";
 import { LiveRecommendationHost } from "@/components/live-recommendation-host";
+import { ActiveBreakHost } from "@/components/active-break-host";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { BreakStateProvider } from "@/contexts/break-state-context";
 import { useAndroidBlockingMonitor } from "@/lib/blocking-monitor";
@@ -181,6 +182,7 @@ export default function Layout() {
                 <HeroUINativeProvider>
                   <View className="flex-1">
                     <NavigationGate />
+                    <ActiveBreakHost />
                     <LiveRecommendationHost />
                     <LiveNudgeHost />
                   </View>

@@ -5,11 +5,17 @@
     tools:ignore="ProtectedPermissions" />
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
   <application>
     <service
       android:name="expo.modules.cueusageaccess.CueBlockingMonitorService"
+      android:foregroundServiceType="specialUse"
       android:enabled="true"
-      android:exported="false" />
+      android:exported="false">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="usage_limit_app_blocking_monitor" />
+    </service>
   </application>
 </manifest>

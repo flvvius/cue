@@ -4,7 +4,9 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { useBreakState } from "@/contexts/break-state-context";
 import { useEnforcementPreview } from "@/lib/enforcement-preview";
+import { hasBlockingMonitorBridge, useAndroidUsageAccess } from "@/lib/usage-access";
 
 function formatBreakScheduleWindow(window: {
   from: string;
@@ -17,6 +19,8 @@ function formatBreakScheduleWindow(window: {
 export default function Home() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const enforcementPreview = useEnforcementPreview();
+  const usageAccess = useAndroidUsageAccess();
+  const { activeBreak, isHydrated } = useBreakState();
   const [showExcludedApps, setShowExcludedApps] = React.useState(false);
 
   const acceptedNudges = overview?.nudgeStats.accepted ?? 0;
@@ -27,6 +31,11 @@ export default function Home() {
     : 0;
   const todayMinutes = overview?.monitoredApps.reduce((sum, app) => sum + app.totalMinutes, 0) ?? 0;
   const todaySessions = overview?.monitoredApps.reduce((sum, app) => sum + app.sessionCount, 0) ?? 0;
+  const fastTestModeActive = (overview?.recommendations ?? []).some(
+    (recommendation) => recommendation.sessionLimitMinutes <= 1,
+  );
+  const blockingBridgeReady = hasBlockingMonitorBridge();
+  const blockerArmed = usageAccess.granted && usageAccess.overlayGranted && blockingBridgeReady && isHydrated;
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -111,6 +120,16 @@ export default function Home() {
           <Text className="mt-2 text-foreground text-2xl font-['Inter_600SemiBold']">
             Limits and break windows
           </Text>
+          {fastTestModeActive ? (
+            <View className="mt-4 rounded-2xl border border-warning/30 bg-warning/12 px-4 py-4">
+              <Text className="text-warning text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+                Fast test mode
+              </Text>
+              <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
+                Cue is using temporary 1-minute limits so you can trigger nudges and blockers quickly. Restore fallback recs when you want normal demo values back.
+              </Text>
+            </View>
+          ) : null}
           <View className="mt-4 gap-4">
             {overview?.recommendations.length ? (
               overview.recommendations.map((recommendation) => (
@@ -217,6 +236,48 @@ export default function Home() {
               </View>
             </View>
           ) : null}
+        </View>
+
+        <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
+          <Text className="text-accent text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Blocker status
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {blockerArmed
+              ? activeBreak
+                ? `Blocking is armed and break protection is active for ${activeBreak.appName}`
+                : "Blocking is armed for over-limit apps"
+              : "Blocking still needs setup"}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {blockerArmed
+              ? activeBreak
+                ? `Cue will keep ${activeBreak.appName} blocked until the current break ends.`
+                : "Usage access, overlay permission, and the native blocker bridge are all available."
+              : !usageAccess.granted
+                ? "Usage Access is still missing."
+                : !usageAccess.overlayGranted
+                  ? "Display-over-apps permission is still missing."
+                  : !blockingBridgeReady
+                    ? "This installed build does not include the native blocker module yet."
+                    : !isHydrated
+                      ? "Cue is still restoring break state from disk."
+                      : "Cue is waiting for the rest of the blocker state to become ready."}
+          </Text>
+          <View className="mt-4 gap-2">
+            <Text className="text-muted text-xs font-['Inter_500Medium']">
+              Usage Access: {usageAccess.granted ? "granted" : "missing"}
+            </Text>
+            <Text className="text-muted text-xs font-['Inter_500Medium']">
+              Display over apps: {usageAccess.overlayGranted ? "granted" : "missing"}
+            </Text>
+            <Text className="text-muted text-xs font-['Inter_500Medium']">
+              Native blocker bridge: {blockingBridgeReady ? "ready" : "missing in this build"}
+            </Text>
+            <Text className="text-muted text-xs font-['Inter_500Medium']">
+              Break state restored: {isHydrated ? "yes" : "loading"}
+            </Text>
+          </View>
         </View>
 
         <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">

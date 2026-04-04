@@ -70,7 +70,16 @@ export default function OnboardingPermissionScreen() {
           : "Continue";
 
   return (
-    <Container className="bg-background px-5 py-8" isScrollable={false}>
+    <Container
+      className="bg-background px-5"
+      scrollViewProps={{
+        contentContainerStyle: {
+          flexGrow: 1,
+          paddingTop: 32,
+          paddingBottom: 32,
+        },
+      }}
+    >
       <View className="flex-1">
         <Text className="text-accent text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
           Permission

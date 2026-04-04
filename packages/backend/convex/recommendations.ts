@@ -118,6 +118,33 @@ const FALLBACK_RECOMMENDATIONS = [
   },
 ];
 
+const FAST_TEST_BREAK_SCHEDULE = [
+  { from: "00:00", to: "23:59", breakAfterMinutes: 1 },
+];
+
+function buildFastTestRecommendations(
+  candidates: typeof FALLBACK_RECOMMENDATIONS,
+  defaultLimitMinutes: number,
+) {
+  const selectedCandidates = candidates.length > 0
+    ? candidates.slice(0, 3)
+    : [
+        {
+          appPackage: "debug.fast-test",
+          appName: "Cue test app",
+          sessionLimitMinutes: defaultLimitMinutes,
+          breakSchedule: FAST_TEST_BREAK_SCHEDULE,
+        },
+      ];
+
+  return selectedCandidates.map((recommendation) => ({
+    appPackage: recommendation.appPackage,
+    appName: recommendation.appName,
+    sessionLimitMinutes: 1,
+    breakSchedule: FAST_TEST_BREAK_SCHEDULE,
+  }));
+}
+
 export const seedFallbackForCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {
@@ -162,6 +189,76 @@ export const clearForCurrentUser = mutation({
 
     return {
       cleared: existingRecommendations.length,
+    };
+  },
+});
+
+export const seedFastTestForCurrentUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await getCurrentIdentity(ctx);
+    const user = await getUserByClerkId(ctx, identity.subject);
+    if (user === null) {
+      throw new Error("User record not found");
+    }
+
+    const allSessions = await ctx.db
+      .query("usageSessions")
+      .withIndex("by_user_time", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const excludedApps = await ctx.db
+      .query("excludedApps")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const excludedPackages = new Set(excludedApps.map((app) => app.appPackage));
+    const monitoredApps = new Map<string, { appPackage: string; appName: string; durationMs: number }>();
+
+    for (const session of allSessions) {
+      if (excludedPackages.has(session.appPackage)) {
+        continue;
+      }
+
+      const existing = monitoredApps.get(session.appPackage);
+      if (existing) {
+        existing.durationMs += session.durationMs;
+      } else {
+        monitoredApps.set(session.appPackage, {
+          appPackage: session.appPackage,
+          appName: session.appName,
+          durationMs: session.durationMs,
+        });
+      }
+    }
+
+    const targetApps = [...monitoredApps.values()]
+      .sort((left, right) => right.durationMs - left.durationMs)
+      .slice(0, 3)
+      .map((app) => ({
+        appPackage: app.appPackage,
+        appName: app.appName,
+        sessionLimitMinutes: 1,
+        breakSchedule: FAST_TEST_BREAK_SCHEDULE,
+      }));
+
+    const recommendations = buildFastTestRecommendations(
+      targetApps.length > 0 ? targetApps : FALLBACK_RECOMMENDATIONS,
+      user.defaultSessionLimitMinutes,
+    );
+
+    const effectiveDate = new Date().toISOString().slice(0, 10);
+    await replaceRecommendationsForUser({
+      ctx,
+      userId: user._id,
+      recommendations,
+      effectiveDate,
+    });
+
+    return {
+      seeded: recommendations.length,
+      effectiveDate,
+      apps: recommendations.map((recommendation) => recommendation.appName),
     };
   },
 });

@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -25,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.app.ServiceCompat
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -60,7 +62,17 @@ class CueBlockingMonitorService : Service() {
     super.onCreate()
     windowManager = getSystemService(WINDOW_SERVICE) as? WindowManager
     createNotificationChannel()
-    startForeground(BLOCKING_NOTIFICATION_ID, buildForegroundNotification())
+    val notification = buildForegroundNotification()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+      ServiceCompat.startForeground(
+        this,
+        BLOCKING_NOTIFICATION_ID,
+        notification,
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+      )
+    } else {
+      startForeground(BLOCKING_NOTIFICATION_ID, notification)
+    }
     executor.scheduleWithFixedDelay(
       { runCatching { pollBlockingState() } },
       0L,

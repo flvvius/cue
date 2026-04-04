@@ -11,6 +11,7 @@
 import type * as aiPipeline from "../aiPipeline.js";
 import type * as aiPipelinePayload from "../aiPipelinePayload.js";
 import type * as alternatives from "../alternatives.js";
+import type * as breaks from "../breaks.js";
 import type * as dashboard from "../dashboard.js";
 import type * as demoCompanion from "../demoCompanion.js";
 import type * as demoData from "../demoData.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   aiPipeline: typeof aiPipeline;
   aiPipelinePayload: typeof aiPipelinePayload;
   alternatives: typeof alternatives;
+  breaks: typeof breaks;
   dashboard: typeof dashboard;
   demoCompanion: typeof demoCompanion;
   demoData: typeof demoData;
