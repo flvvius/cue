@@ -1,5 +1,5 @@
 import { api } from "@cue/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -14,11 +14,13 @@ export default function SettingsTab() {
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
   const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
+  const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
   const [isQueueing, setIsQueueing] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
   const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = React.useState(false);
+  const [isTriggeringExport, setIsTriggeringExport] = React.useState(false);
 
   const handleSendTestNudge = React.useCallback(async () => {
     if (isQueueing) {
@@ -100,6 +102,32 @@ export default function SettingsTab() {
       setIsClearingRecommendations(false);
     }
   }, [clearRecommendations, isClearingRecommendations]);
+
+  const handleTriggerExport = React.useCallback(async () => {
+    if (isTriggeringExport) {
+      return;
+    }
+
+    setIsTriggeringExport(true);
+    try {
+      const result = await triggerExportForCurrentUser({});
+      if (result.sent) {
+        setDebugStatus(`Export sent to ${result.endpoint} with ${result.payload.sessions.length} sessions.`);
+        return;
+      }
+
+      if (result.reason === "missing_endpoint") {
+        setDebugStatus(
+          `Export payload is ready locally: ${result.payload.sessions.length} sessions, ${result.payload.excludedApps.length} excluded apps, but no AWS endpoint is configured yet.`,
+        );
+        return;
+      }
+
+      setDebugStatus(`Export failed with status ${result.status ?? "unknown"}.`);
+    } finally {
+      setIsTriggeringExport(false);
+    }
+  }, [isTriggeringExport, triggerExportForCurrentUser]);
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -184,6 +212,30 @@ export default function SettingsTab() {
             >
               <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
                 {isClearingRecommendations ? "Clearing..." : "Clear recs"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            AI pipeline
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            Manual export trigger
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Sends the last 24 hours of full usage data, exclusions, and profile settings to the external AI endpoint when configured. If the endpoint is missing, Cue still builds the payload so you can verify the flow safely.
+          </Text>
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => void handleTriggerExport()}
+              disabled={isTriggeringExport}
+              className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isTriggeringExport ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+                {isTriggeringExport ? "Building..." : "Trigger export"}
               </Text>
             </Pressable>
           </View>

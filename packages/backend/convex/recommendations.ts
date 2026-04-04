@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 
 async function getCurrentIdentity(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
@@ -15,6 +15,49 @@ async function getUserByClerkId(ctx: any, clerkId: string) {
     .query("users")
     .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
     .unique();
+}
+
+async function replaceRecommendationsForUser(params: {
+  ctx: any;
+  userId: string;
+  recommendations: Array<{
+    appPackage: string;
+    appName: string;
+    sessionLimitMinutes: number;
+    breakSchedule: Array<{
+      from: string;
+      to: string;
+      breakAfterMinutes: number;
+    }>;
+  }>;
+  effectiveDate: string;
+}) {
+  const existingRecommendations = await params.ctx.db
+    .query("aiRecommendations")
+    .withIndex("by_user", (q: any) => q.eq("userId", params.userId))
+    .collect();
+
+  for (const recommendation of existingRecommendations) {
+    await params.ctx.db.delete(recommendation._id);
+  }
+
+  for (const recommendation of params.recommendations) {
+    await params.ctx.db.insert("aiRecommendations", {
+      userId: params.userId,
+      appPackage: recommendation.appPackage,
+      appName: recommendation.appName,
+      sessionLimitMinutes: recommendation.sessionLimitMinutes,
+      breakSchedule: recommendation.breakSchedule,
+      effectiveDate: params.effectiveDate,
+      createdAt: Date.now(),
+    });
+  }
+
+  return {
+    cleared: existingRecommendations.length,
+    stored: params.recommendations.length,
+    effectiveDate: params.effectiveDate,
+  };
 }
 
 const FALLBACK_RECOMMENDATIONS = [
@@ -85,26 +128,12 @@ export const seedFallbackForCurrentUser = mutation({
     }
 
     const effectiveDate = new Date().toISOString().slice(0, 10);
-    const existingRecommendations = await ctx.db
-      .query("aiRecommendations")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    for (const recommendation of existingRecommendations) {
-      await ctx.db.delete(recommendation._id);
-    }
-
-    for (const recommendation of FALLBACK_RECOMMENDATIONS) {
-      await ctx.db.insert("aiRecommendations", {
-        userId: user._id,
-        appPackage: recommendation.appPackage,
-        appName: recommendation.appName,
-        sessionLimitMinutes: recommendation.sessionLimitMinutes,
-        breakSchedule: recommendation.breakSchedule,
-        effectiveDate,
-        createdAt: Date.now(),
-      });
-    }
+    await replaceRecommendationsForUser({
+      ctx,
+      userId: user._id,
+      recommendations: FALLBACK_RECOMMENDATIONS,
+      effectiveDate,
+    });
 
     return {
       seeded: FALLBACK_RECOMMENDATIONS.length,
@@ -163,30 +192,51 @@ export const storeForCurrentUser = mutation({
     }
 
     const effectiveDate = args.effectiveDate ?? new Date().toISOString().slice(0, 10);
-    const existingRecommendations = await ctx.db
-      .query("aiRecommendations")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    for (const recommendation of existingRecommendations) {
-      await ctx.db.delete(recommendation._id);
-    }
-
-    for (const recommendation of args.recommendations) {
-      await ctx.db.insert("aiRecommendations", {
-        userId: user._id,
-        appPackage: recommendation.appPackage,
-        appName: recommendation.appName,
-        sessionLimitMinutes: recommendation.sessionLimitMinutes,
-        breakSchedule: recommendation.breakSchedule,
-        effectiveDate,
-        createdAt: Date.now(),
-      });
-    }
+    await replaceRecommendationsForUser({
+      ctx,
+      userId: user._id,
+      recommendations: args.recommendations,
+      effectiveDate,
+    });
 
     return {
       stored: args.recommendations.length,
       effectiveDate,
     };
+  },
+});
+
+export const storeForClerkUser = internalMutation({
+  args: {
+    clerkId: v.string(),
+    recommendations: v.array(
+      v.object({
+        appPackage: v.string(),
+        appName: v.string(),
+        sessionLimitMinutes: v.number(),
+        breakSchedule: v.array(
+          v.object({
+            from: v.string(),
+            to: v.string(),
+            breakAfterMinutes: v.number(),
+          }),
+        ),
+      }),
+    ),
+    effectiveDate: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserByClerkId(ctx, args.clerkId);
+    if (user === null) {
+      throw new Error("User record not found");
+    }
+
+    const effectiveDate = args.effectiveDate ?? new Date().toISOString().slice(0, 10);
+    return await replaceRecommendationsForUser({
+      ctx,
+      userId: user._id,
+      recommendations: args.recommendations,
+      effectiveDate,
+    });
   },
 });
