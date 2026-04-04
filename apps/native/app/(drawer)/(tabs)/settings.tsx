@@ -6,7 +6,7 @@ import { Container } from "@/components/container";
 
 export default function SettingsTab() {
   const currentUser = useQuery(api.users.current);
-  const excludedApps = useQuery(api.excludedApps.listForCurrentUser);
+  const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const alternatives = useQuery(api.alternatives.listForCurrentUser);
 
   return (
@@ -44,10 +44,10 @@ export default function SettingsTab() {
             Excluded apps
           </Text>
           <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
-            {excludedApps?.length ?? 0}
+            {overview?.excludedApps.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(excludedApps ?? []).slice(0, 4).map((app) => app.appName).join(", ") || "None yet"}
+            {(overview?.excludedApps ?? []).slice(0, 4).map((app) => app.appName).join(", ") || "None yet"}
           </Text>
         </View>
 
@@ -60,6 +60,18 @@ export default function SettingsTab() {
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {(alternatives ?? []).slice(0, 4).map((alternative) => alternative.activity).join(", ") || "None yet"}
+          </Text>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            AI recommendations
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {overview?.recommendations.length ?? 0}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
         </View>
       </View>
