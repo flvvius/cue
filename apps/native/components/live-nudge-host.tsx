@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NudgeCard } from "@/components/nudge-card";
 import { useBreakState } from "@/contexts/break-state-context";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
 import { resolveBreakDurationMinutes } from "@/lib/break-duration";
 import { useLocalNudgeEngine } from "@/lib/local-nudge-engine";
 import { clearNotificationForNudge, useNudgeNotifications } from "@/lib/nudge-notifications";
@@ -72,9 +73,12 @@ export function LiveNudgeHost() {
           );
           const appName = activeNudge.triggerApp === "debug.manual"
             ? "your current app"
-            : recommendation?.appName ??
-              overview?.monitoredApps.find((item: any) => item.appPackage === activeNudge.triggerApp)?.appName ??
-              activeNudge.triggerApp;
+            : resolveDisplayAppName(
+                recommendation?.appName ??
+                  overview?.monitoredApps.find((item: any) => item.appPackage === activeNudge.triggerApp)?.appName ??
+                  activeNudge.triggerApp,
+                activeNudge.triggerApp,
+              );
           const breakDurationMinutes =
             activeNudge.breakDurationMinutes ??
             resolveBreakDurationMinutes(recommendation);

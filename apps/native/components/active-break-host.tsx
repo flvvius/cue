@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBreakState } from "@/contexts/break-state-context";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
 
 function formatRemainingTime(totalMs: number) {
   const safeMs = Math.max(0, totalMs);
@@ -50,6 +51,8 @@ export function ActiveBreakHost() {
     return null;
   }
 
+  const displayName = resolveDisplayAppName(activeBreak.appName, activeBreak.appPackage);
+
   return (
     <View
       pointerEvents="box-none"
@@ -62,7 +65,7 @@ export function ActiveBreakHost() {
             pathname: "/break-timer",
             params: {
               appPackage: activeBreak.appPackage,
-              appName: activeBreak.appName,
+              appName: displayName,
               alternative: activeBreak.alternative ?? undefined,
               durationMinutes: String(activeBreak.durationMinutes),
               endsAt: String(activeBreak.endsAt),
@@ -76,7 +79,7 @@ export function ActiveBreakHost() {
           Active break
         </Text>
         <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
-          {activeBreak.appName} is cooling down for {formatRemainingTime(remainingMs)}
+          {displayName} is cooling down for {formatRemainingTime(remainingMs)}
         </Text>
         <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
           Cue will keep this app blocked until the timer ends. Tap to reopen the break screen.

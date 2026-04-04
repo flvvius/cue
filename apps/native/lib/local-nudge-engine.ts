@@ -26,41 +26,44 @@ export function useLocalNudgeEngine() {
   const triggeredKeysRef = React.useRef(new Set<string>());
 
   React.useEffect(() => {
-    const activeSession = enforcementPreview.activeSession;
-    if (!overview || !activeSession) {
+    const candidateSession = enforcementPreview.activeSession ?? enforcementPreview.warmSession;
+    if (!overview || !candidateSession) {
       return;
     }
 
-    const bucket = activeSession.thresholdBucket === "safe" ? null : activeSession.thresholdBucket;
+    const bucket = candidateSession.thresholdBucket === "safe" ? null : candidateSession.thresholdBucket;
     if (!bucket) {
       return;
     }
 
-    const triggerKey = `${activeSession.appPackage}:${activeSession.startTime}:${bucket}`;
+    const triggerKey = `${candidateSession.appPackage}:${candidateSession.startTime}:${bucket}`;
     if (triggeredKeysRef.current.has(triggerKey)) {
       return;
     }
 
     triggeredKeysRef.current.add(triggerKey);
-    const chosenAlternative = alternatives?.[0]?.activity;
+    const alternativeOptions = (alternatives ?? []).slice(0, 5).map((item) => item.activity);
+    const chosenAlternative = alternativeOptions[0];
     const recommendation = overview.recommendations.find(
-      (item: any) => item.appPackage === activeSession.appPackage,
+      (item: any) => item.appPackage === candidateSession.appPackage,
     );
     const breakDurationMinutes = resolveBreakDurationMinutes(recommendation);
 
     void requestGeneratedNudge({
-      triggerApp: activeSession.appPackage,
-      appName: activeSession.appName,
+      triggerApp: candidateSession.appPackage,
+      appName: candidateSession.appName,
       type: resolveNudgeType(bucket),
       thresholdBucket: bucket,
-      limitMinutes: activeSession.limitMinutes,
+      limitMinutes: candidateSession.limitMinutes,
       breakDurationMinutes,
+      alternatives: alternativeOptions,
       alternative: chosenAlternative,
       cooldownMinutes: bucket === "approaching" ? 10 : 20,
     });
   }, [
     alternatives,
     enforcementPreview.activeSession,
+    enforcementPreview.warmSession,
     overview,
     requestGeneratedNudge,
   ]);

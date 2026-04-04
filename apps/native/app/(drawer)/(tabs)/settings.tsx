@@ -4,6 +4,8 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
+import { useEnforcementPreview } from "@/lib/enforcement-preview";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export default function SettingsTab() {
@@ -14,6 +16,7 @@ export default function SettingsTab() {
   const exportRuns = useQuery((api as any).aiOps.recentExportRunsForCurrentUser);
   const webhookEvents = useQuery((api as any).aiOps.recentWebhookEventsForCurrentUser);
   const queueNudge = useMutation(api.nudges.queueForCurrentUser);
+  const requestGeneratedNudge = useMutation((api as any).nudgeRequests.requestForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
   const seedFastTestRecommendations = useMutation(api.recommendations.seedFastTestForCurrentUser);
@@ -21,7 +24,9 @@ export default function SettingsTab() {
   const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
   const seedDemoDataForCurrentUser = useMutation((api as any).demoData.seedForCurrentUser);
   const usageAccess = useAndroidUsageAccess();
+  const enforcementPreview = useEnforcementPreview();
   const [isQueueing, setIsQueueing] = React.useState(false);
+  const [isQueueingAiNudge, setIsQueueingAiNudge] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
   const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
@@ -82,6 +87,69 @@ export default function SettingsTab() {
       setIsClearing(false);
     }
   }, [activeNudge, isClearing, respondToNudge]);
+
+  const handleSendAiTestNudge = React.useCallback(async () => {
+    if (isQueueingAiNudge) {
+      return;
+    }
+
+    setIsQueueingAiNudge(true);
+    try {
+      if (activeNudge) {
+        await respondToNudge({
+          nudgeId: activeNudge._id,
+          status: "dismissed",
+        });
+      }
+
+      const targetRecommendation = overview?.recommendations?.[0];
+      const targetApp = targetRecommendation
+        ? {
+            appPackage: targetRecommendation.appPackage,
+            appName: targetRecommendation.appName,
+            limitMinutes: targetRecommendation.sessionLimitMinutes,
+            breakMinutes:
+              targetRecommendation.breakSchedule?.[0]?.breakAfterMinutes ?? 5,
+          }
+        : overview?.monitoredApps?.[0]
+          ? {
+              appPackage: overview.monitoredApps[0].appPackage,
+              appName: overview.monitoredApps[0].appName,
+              limitMinutes: overview.monitoredApps[0].limitMinutes,
+              breakMinutes: 5,
+            }
+          : {
+              appPackage: "debug.manual",
+              appName: "Current app",
+              limitMinutes: currentUser?.defaultSessionLimitMinutes ?? 5,
+              breakMinutes: 5,
+            };
+
+      await requestGeneratedNudge({
+        triggerApp: targetApp.appPackage,
+        appName: targetApp.appName,
+        type: "limit_warning",
+        thresholdBucket: "at_limit",
+        limitMinutes: targetApp.limitMinutes,
+        breakDurationMinutes: targetApp.breakMinutes,
+        alternatives: (alternatives ?? []).slice(0, 5).map((item: any) => item.activity),
+        alternative: alternatives?.[0]?.activity,
+        cooldownMinutes: 0,
+      });
+
+      setDebugStatus(`AI nudge requested for ${targetApp.appName}. If OpenAI is wired, the next nudge should use model-generated copy.`);
+    } finally {
+      setIsQueueingAiNudge(false);
+    }
+  }, [
+    activeNudge,
+    alternatives,
+    currentUser?.defaultSessionLimitMinutes,
+    isQueueingAiNudge,
+    overview,
+    requestGeneratedNudge,
+    respondToNudge,
+  ]);
 
   const handleSeedRecommendations = React.useCallback(async () => {
     if (isSeedingRecommendations) {
@@ -207,7 +275,7 @@ export default function SettingsTab() {
             {overview?.excludedApps.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(overview?.excludedApps ?? []).slice(0, 4).map((app: any) => app.appName).join(", ") || "None yet"}
+            {(overview?.excludedApps ?? []).slice(0, 4).map((app: any) => resolveDisplayAppName(app.appName, app.appPackage)).join(", ") || "None yet"}
           </Text>
         </View>
 
@@ -268,7 +336,7 @@ export default function SettingsTab() {
             {overview?.recommendations.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation: any) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
+            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation: any) => `${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
           <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             Fast test mode seeds 1-minute limits for a few monitored apps so you can hit real thresholds and blocker states almost immediately.
@@ -405,6 +473,25 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             Real thresholds are currently: approaching at 80%, at limit at 100%, and exceeded at 120% of the session limit. Use the debug trigger below if you want to test the card without waiting.
           </Text>
+          <View className="mt-4 rounded-2xl border border-border bg-background px-4 py-4">
+            <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+              Enforcement preview
+            </Text>
+            <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
+              {enforcementPreview.activeSession
+                ? `Active: ${enforcementPreview.activeSession.appName}`
+                : enforcementPreview.warmSession
+                  ? `Warm: ${enforcementPreview.warmSession.appName}`
+                  : "No tracked monitored app right now"}
+            </Text>
+            <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+              {enforcementPreview.activeSession
+                ? `${enforcementPreview.activeSession.thresholdBucket} • ${Math.round(enforcementPreview.activeSession.durationMs / 1000)}s • limit ${enforcementPreview.activeSession.limitMinutes}m`
+                : enforcementPreview.warmSession
+                  ? `${enforcementPreview.warmSession.thresholdBucket} • ${Math.round(enforcementPreview.warmSession.durationMs / 1000)}s • limit ${enforcementPreview.warmSession.limitMinutes}m`
+                  : "Use a monitored app, then come back here to see whether Cue recognized it."}
+            </Text>
+          </View>
           <View className="mt-4 flex-row gap-3">
             <Pressable
               onPress={() => void handleSendTestNudge()}
@@ -424,6 +511,18 @@ export default function SettingsTab() {
             >
               <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
                 {isClearing ? "Clearing..." : "Clear active"}
+              </Text>
+            </Pressable>
+          </View>
+          <View className="mt-3 flex-row gap-3">
+            <Pressable
+              onPress={() => void handleSendAiTestNudge()}
+              disabled={isQueueingAiNudge}
+              className="flex-1 rounded-xl border border-accent/30 bg-accent/12 px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isQueueingAiNudge ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-accent font-['Inter_600SemiBold']">
+                {isQueueingAiNudge ? "Requesting..." : "Send AI test nudge"}
               </Text>
             </Pressable>
           </View>

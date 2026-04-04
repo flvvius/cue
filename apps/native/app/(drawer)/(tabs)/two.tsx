@@ -6,6 +6,7 @@ import { Pressable } from "react-native";
 
 import { Container } from "@/components/container";
 import { useBreakState } from "@/contexts/break-state-context";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
 
 export default function TabTwo() {
   const usageSummary = useQuery(api.usageSessions.summaryForCurrentUser);
@@ -35,7 +36,7 @@ export default function TabTwo() {
                 pathname: "/break-timer",
                 params: {
                   appPackage: activeBreak.appPackage,
-                  appName: activeBreak.appName,
+                  appName: resolveDisplayAppName(activeBreak.appName, activeBreak.appPackage),
                   alternative: activeBreak.alternative ?? undefined,
                   durationMinutes: String(activeBreak.durationMinutes),
                   endsAt: String(activeBreak.endsAt),
@@ -49,7 +50,7 @@ export default function TabTwo() {
               Break protection
             </Text>
             <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
-              {activeBreak.appName} is currently blocked
+              {resolveDisplayAppName(activeBreak.appName, activeBreak.appPackage)} is currently blocked
             </Text>
             <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
               Cue is holding the reset for {activeBreak.durationMinutes} minutes. Tap to reopen the timer and finish the break cleanly.
@@ -64,7 +65,7 @@ export default function TabTwo() {
               className="rounded-2xl border border-border bg-surface p-5"
             >
               <Text className="text-foreground text-lg font-['Inter_600SemiBold']">
-                {session.appName}
+                {resolveDisplayAppName(session.appName, session.appPackage)}
               </Text>
               <Text className="mt-1 text-muted text-xs font-['Inter_400Regular']">
                 {session.appPackage}
@@ -112,7 +113,7 @@ export default function TabTwo() {
                 >
                   <View className="flex-row items-center justify-between">
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                      {item.appName}
+                      {resolveDisplayAppName(item.appName, item.appPackage)}
                     </Text>
                     <Text
                       className={`text-xs font-['Inter_600SemiBold'] ${

@@ -11,14 +11,16 @@ type NudgeType = "limit_warning" | "pattern_break" | "session_check" | "ai_limit
 
 function buildFallbackMessage(params: {
   appName: string;
+  alternatives?: string[];
   alternative?: string;
   nudgeStyle: NudgeStyle;
   bucket: NudgeBucket;
   limitMinutes: number;
   breakDurationMinutes: number;
 }) {
-  const alternativeLine = params.alternative
-    ? ` Try ${params.alternative.toLowerCase()} instead.`
+  const fallbackAlternative = params.alternative ?? params.alternatives?.[0];
+  const alternativeLine = fallbackAlternative
+    ? ` Try ${fallbackAlternative.toLowerCase()} instead.`
     : "";
   const breakLine = ` Take a ${params.breakDurationMinutes}-minute reset.`;
 
@@ -59,12 +61,106 @@ function buildFallbackMessage(params: {
 
 async function generateMessage(params: {
   appName: string;
+  alternatives?: string[];
   alternative?: string;
   nudgeStyle: NudgeStyle;
   bucket: NudgeBucket;
   limitMinutes: number;
   breakDurationMinutes: number;
 }): Promise<{ message: string; alternative?: string }> {
+  const openAiApiKey =
+    process.env.OPENAI_API_KEY ??
+    process.env.CUE_OPENAI_API_KEY ??
+    null;
+  const openAiModel =
+    process.env.OPENAI_MODEL ??
+    process.env.CUE_OPENAI_MODEL ??
+    "gpt-5-mini";
+
+  if (openAiApiKey) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${openAiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: openAiModel,
+          max_output_tokens: 140,
+          text: {
+            format: {
+              type: "json_schema",
+              name: "cue_nudge_response",
+              strict: true,
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  message: { type: "string" },
+                  alternative: {
+                    anyOf: [
+                      { type: "string" },
+                      { type: "null" },
+                    ],
+                  },
+                },
+                required: ["message", "alternative"],
+              },
+            },
+          },
+          instructions:
+            "You write short, specific screen-time intervention nudges for a mobile app. Respond with valid JSON only. Keep the message under 140 characters, warm but firm, and never mention being an AI.",
+          input: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "input_text",
+                  text:
+                    `App: ${params.appName}\n` +
+                    `Threshold: ${params.bucket}\n` +
+                    `Session limit: ${params.limitMinutes} minutes\n` +
+                    `Break duration: ${params.breakDurationMinutes} minutes\n` +
+                    `Preferred nudge style: ${params.nudgeStyle}\n` +
+                    `Alternative options: ${(params.alternatives && params.alternatives.length > 0) ? params.alternatives.join(", ") : params.alternative ?? "none"}\n` +
+                    "Return one nudge message and one alternative field. Prefer a concrete option from the provided alternatives. Avoid generic suggestions like 'go outside' or 'take a walk' unless one of those was explicitly provided.",
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI Responses API failed with ${response.status}`);
+      }
+
+      const payload = await response.json() as {
+        output_text?: string;
+      };
+
+      const parsed = JSON.parse(payload.output_text ?? "{}") as {
+        message?: string;
+        alternative?: string | null;
+      };
+
+      if (!parsed.message || parsed.message.trim().length === 0) {
+        throw new Error("OpenAI returned an empty nudge message");
+      }
+
+      return {
+        message: parsed.message.trim(),
+        alternative: parsed.alternative?.trim() || params.alternative || params.alternatives?.[0],
+      };
+    } catch {
+      return {
+        message: buildFallbackMessage(params),
+        alternative: params.alternative ?? params.alternatives?.[0],
+      };
+    }
+  }
+
   const endpoint =
     process.env.CUE_NUDGE_MODEL_URL ??
     process.env.CUE_AI_NUDGE_URL ??
@@ -74,7 +170,7 @@ async function generateMessage(params: {
   if (!endpoint) {
     return {
       message: buildFallbackMessage(params),
-      alternative: params.alternative,
+      alternative: params.alternative ?? params.alternatives?.[0],
     };
   }
 
@@ -93,6 +189,7 @@ async function generateMessage(params: {
       },
       body: JSON.stringify({
         appName: params.appName,
+        alternatives: params.alternatives,
         alternative: params.alternative,
         nudgeStyle: params.nudgeStyle,
         thresholdBucket: params.bucket,
@@ -116,12 +213,12 @@ async function generateMessage(params: {
 
     return {
       message: payload.message.trim(),
-      alternative: payload.alternative?.trim() || params.alternative,
+      alternative: payload.alternative?.trim() || params.alternative || params.alternatives?.[0],
     };
   } catch {
     return {
       message: buildFallbackMessage(params),
-      alternative: params.alternative,
+      alternative: params.alternative ?? params.alternatives?.[0],
     };
   }
 }
@@ -145,6 +242,7 @@ export const generateForUser: any = internalAction({
     ),
     limitMinutes: v.number(),
     breakDurationMinutes: v.number(),
+    alternatives: v.optional(v.array(v.string())),
     alternative: v.optional(v.string()),
     cooldownMinutes: v.optional(v.number()),
     nudgeStyle: v.union(
@@ -156,6 +254,7 @@ export const generateForUser: any = internalAction({
   handler: async (ctx, args): Promise<any> => {
     const generated = await generateMessage({
       appName: args.appName,
+      alternatives: args.alternatives,
       alternative: args.alternative,
       nudgeStyle: args.nudgeStyle,
       bucket: args.thresholdBucket,

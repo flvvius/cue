@@ -124,7 +124,6 @@ const FAST_TEST_BREAK_SCHEDULE = [
 
 function buildFastTestRecommendations(
   candidates: typeof FALLBACK_RECOMMENDATIONS,
-  defaultLimitMinutes: number,
 ) {
   const selectedCandidates = candidates.length > 0
     ? candidates.slice(0, 3)
@@ -132,7 +131,7 @@ function buildFastTestRecommendations(
         {
           appPackage: "debug.fast-test",
           appName: "Cue test app",
-          sessionLimitMinutes: defaultLimitMinutes,
+          sessionLimitMinutes: 1,
           breakSchedule: FAST_TEST_BREAK_SCHEDULE,
         },
       ];
@@ -234,7 +233,7 @@ export const seedFastTestForCurrentUser = mutation({
 
     const targetApps = [...monitoredApps.values()]
       .sort((left, right) => right.durationMs - left.durationMs)
-      .slice(0, 3)
+      .slice(0, 5)
       .map((app) => ({
         appPackage: app.appPackage,
         appName: app.appName,
@@ -242,10 +241,36 @@ export const seedFastTestForCurrentUser = mutation({
         breakSchedule: FAST_TEST_BREAK_SCHEDULE,
       }));
 
-    const recommendations = buildFastTestRecommendations(
-      targetApps.length > 0 ? targetApps : FALLBACK_RECOMMENDATIONS,
-      user.defaultSessionLimitMinutes,
-    );
+    const mergedRecommendations = new Map<
+      string,
+      {
+        appPackage: string;
+        appName: string;
+        sessionLimitMinutes: number;
+        breakSchedule: Array<{
+          from: string;
+          to: string;
+          breakAfterMinutes: number;
+        }>;
+      }
+    >();
+
+    for (const recommendation of targetApps) {
+      mergedRecommendations.set(recommendation.appPackage, recommendation);
+    }
+
+    for (const recommendation of FALLBACK_RECOMMENDATIONS) {
+      if (!mergedRecommendations.has(recommendation.appPackage)) {
+        mergedRecommendations.set(recommendation.appPackage, {
+          appPackage: recommendation.appPackage,
+          appName: recommendation.appName,
+          sessionLimitMinutes: 1,
+          breakSchedule: FAST_TEST_BREAK_SCHEDULE,
+        });
+      }
+    }
+
+    const recommendations = buildFastTestRecommendations([...mergedRecommendations.values()]);
 
     const effectiveDate = new Date().toISOString().slice(0, 10);
     await replaceRecommendationsForUser({

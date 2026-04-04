@@ -6,6 +6,7 @@ import Svg, { Circle } from "react-native-svg";
 
 import { Container } from "@/components/container";
 import { useBreakState } from "@/contexts/break-state-context";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
 
 function formatRemainingTime(totalMs: number) {
   const safeMs = Math.max(0, totalMs);
@@ -27,7 +28,10 @@ export default function BreakTimerScreen() {
     endsAt?: string;
   }>();
   const appPackage = params.appPackage ?? activeBreak?.appPackage ?? "debug.manual";
-  const appName = params.appName ?? activeBreak?.appName ?? "This app";
+  const appName = resolveDisplayAppName(
+    params.appName ?? activeBreak?.appName,
+    appPackage,
+  );
   const alternative = params.alternative ?? activeBreak?.alternative;
   const durationMinutes = Math.max(
     1,
@@ -98,8 +102,15 @@ export default function BreakTimerScreen() {
         </View>
 
         <View className="items-center">
-          <View className="items-center justify-center">
-            <Svg width={ringSize} height={ringSize} className="absolute">
+          <View
+            className="items-center justify-center"
+            style={{ width: ringSize, height: ringSize }}
+          >
+            <Svg
+              width={ringSize}
+              height={ringSize}
+              style={{ position: "absolute", top: 0, left: 0 }}
+            >
               <Circle
                 cx={ringSize / 2}
                 cy={ringSize / 2}
@@ -124,7 +135,7 @@ export default function BreakTimerScreen() {
               />
             </Svg>
 
-            <View className="h-56 w-56 items-center justify-center rounded-full border border-break/20 bg-break/12">
+            <View className="h-48 w-48 items-center justify-center rounded-full border border-break/20 bg-break/12">
               <Text className="text-break text-5xl font-['Inter_700Bold']">
                 {formatRemainingTime(remainingMs)}
               </Text>

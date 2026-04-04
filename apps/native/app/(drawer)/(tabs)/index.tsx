@@ -5,6 +5,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 import { useBreakState } from "@/contexts/break-state-context";
+import { resolveDisplayAppName } from "@/lib/app-display-name";
 import { useEnforcementPreview } from "@/lib/enforcement-preview";
 import { hasBlockingMonitorBridge, useAndroidUsageAccess } from "@/lib/usage-access";
 
@@ -94,7 +95,7 @@ export default function Home() {
                 <View key={app.appPackage}>
                   <View className="flex-row items-center justify-between">
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                      {app.appName}
+                      {resolveDisplayAppName(app.appName, app.appPackage)}
                     </Text>
                     <Text className="text-secondary text-sm font-['Inter_400Regular']">
                       {app.totalMinutes} / {app.limitMinutes} min
@@ -142,7 +143,7 @@ export default function Home() {
                 >
                   <View className="flex-row items-center justify-between">
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                      {recommendation.appName}
+                      {resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}
                     </Text>
                     <Text className="text-accent text-sm font-['Inter_600SemiBold']">
                       {recommendation.sessionLimitMinutes} min
@@ -197,7 +198,7 @@ export default function Home() {
                     className="rounded-2xl border border-border bg-background px-4 py-4"
                   >
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                      {app.appName}
+                      {resolveDisplayAppName(app.appName, app.appPackage)}
                     </Text>
                     <Text className="mt-1 text-secondary text-sm font-['Inter_400Regular']">
                       {app.appPackage}
@@ -248,14 +249,14 @@ export default function Home() {
           <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
             {blockerArmed
               ? activeBreak
-                ? `Blocking is armed and break protection is active for ${activeBreak.appName}`
+                ? `Blocking is armed and break protection is active for ${resolveDisplayAppName(activeBreak.appName, activeBreak.appPackage)}`
                 : "Blocking is armed for over-limit apps"
               : "Blocking still needs setup"}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {blockerArmed
               ? activeBreak
-                ? `Cue will keep ${activeBreak.appName} blocked until the current break ends.`
+                ? `Cue will keep ${resolveDisplayAppName(activeBreak.appName, activeBreak.appPackage)} blocked until the current break ends.`
                 : "Usage access, overlay permission, and the native blocker bridge are all available."
               : !usageAccess.granted
                 ? "Usage Access is still missing."
@@ -289,9 +290,9 @@ export default function Home() {
           </Text>
           <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
             {enforcementPreview.activeSession
-              ? `${enforcementPreview.activeSession.appName} is currently being tracked`
+              ? `${resolveDisplayAppName(enforcementPreview.activeSession.appName, enforcementPreview.activeSession.appPackage)} is currently being tracked`
               : enforcementPreview.warmSession
-                ? `${enforcementPreview.warmSession.appName} can resume without reset`
+                ? `${resolveDisplayAppName(enforcementPreview.warmSession.appName, enforcementPreview.warmSession.appPackage)} can resume without reset`
                 : "No active monitored session right now"}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
@@ -313,7 +314,7 @@ export default function Home() {
                 >
                   <View className="flex-row items-center justify-between">
                     <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                      {session.appName}
+                      {resolveDisplayAppName(session.appName, session.appPackage)}
                     </Text>
                     <Text
                       className={`text-xs font-['Inter_600SemiBold'] ${
