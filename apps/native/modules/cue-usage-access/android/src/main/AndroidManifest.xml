@@ -3,4 +3,13 @@
   <uses-permission
     android:name="android.permission.PACKAGE_USAGE_STATS"
     tools:ignore="ProtectedPermissions" />
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+  <application>
+    <service
+      android:name="expo.modules.cueusageaccess.CueBlockingMonitorService"
+      android:enabled="true"
+      android:exported="false" />
+  </application>
 </manifest>

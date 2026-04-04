@@ -4,6 +4,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export default function SettingsTab() {
   const currentUser = useQuery(api.users.current);
@@ -16,6 +17,7 @@ export default function SettingsTab() {
   const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
   const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
   const seedDemoDataForCurrentUser = useMutation((api as any).demoData.seedForCurrentUser);
+  const usageAccess = useAndroidUsageAccess();
   const [isQueueing, setIsQueueing] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
   const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
@@ -199,6 +201,43 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {(alternatives ?? []).slice(0, 4).map((alternative) => alternative.activity).join(", ") || "None yet"}
           </Text>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Android blocking
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {usageAccess.granted && usageAccess.overlayGranted ? "Fully armed" : "Needs permissions"}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Usage Access: {usageAccess.granted ? "granted" : "missing"}{"\n"}
+            Display over apps: {usageAccess.overlayGranted ? "granted" : "missing"}
+          </Text>
+          <View className="mt-4 flex-row gap-3">
+            {!usageAccess.granted ? (
+              <Pressable
+                onPress={() => void usageAccess.openSettings()}
+                className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
+                style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+              >
+                <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+                  Open usage settings
+                </Text>
+              </Pressable>
+            ) : null}
+            {!usageAccess.overlayGranted ? (
+              <Pressable
+                onPress={() => void usageAccess.openOverlaySettings()}
+                className="flex-1 rounded-xl border border-border bg-surface px-4 py-4"
+                style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
+              >
+                <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
+                  Allow overlay
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
 
         <View className="rounded-2xl border border-border bg-surface p-5">

@@ -19,9 +19,30 @@ export type RawUsageEvent = {
   isSystemApp: boolean;
 };
 
+export type BlockingConfig = {
+  enabled: boolean;
+  defaultLimitMinutes: number;
+  excludedPackages: string[];
+  sessionResetCutoffs: Record<string, number>;
+  appLimits: {
+    appPackage: string;
+    appName: string;
+    limitMinutes: number;
+  }[];
+  activeBreak?: {
+    appPackage: string;
+    endsAt: number;
+  } | null;
+};
+
 type CueUsageAccessModuleShape = {
+  isOverlayPermissionGranted?: () => boolean;
   isUsageAccessGranted?: () => boolean;
+  openOverlaySettings?: () => Promise<void>;
   openUsageAccessSettings?: () => Promise<void>;
+  setBlockingConfig?: (configJson: string) => Promise<void>;
+  startBlockingMonitor?: () => Promise<void>;
+  stopBlockingMonitor?: () => Promise<void>;
   getRecentlyUsedApps?: (
     sinceMs: number,
     limit: number,
@@ -60,6 +81,23 @@ function hasUsageAccessMethods(module: CueUsageAccessModuleShape | null) {
   );
 }
 
+function hasOverlayMethods(module: CueUsageAccessModuleShape | null) {
+  return Boolean(
+    module &&
+      typeof module.isOverlayPermissionGranted === "function" &&
+      typeof module.openOverlaySettings === "function",
+  );
+}
+
+function hasBlockingMonitorMethods(module: CueUsageAccessModuleShape | null) {
+  return Boolean(
+    module &&
+      typeof module.setBlockingConfig === "function" &&
+      typeof module.startBlockingMonitor === "function" &&
+      typeof module.stopBlockingMonitor === "function",
+  );
+}
+
 function hasRecentAppsMethod(module: CueUsageAccessModuleShape | null) {
   return Boolean(module && typeof module.getRecentlyUsedApps === "function");
 }
@@ -70,7 +108,9 @@ function hasUsageEventsMethod(module: CueUsageAccessModuleShape | null) {
 
 type UsageAccessState = {
   granted: boolean;
+  overlayGranted: boolean;
   isAvailable: boolean;
+  overlayAvailable: boolean;
   isRelevant: boolean;
 };
 
@@ -78,7 +118,9 @@ function readUsageAccessState(): UsageAccessState {
   if (Platform.OS !== "android") {
     return {
       granted: true,
+      overlayGranted: true,
       isAvailable: false,
+      overlayAvailable: false,
       isRelevant: false,
     };
   }
@@ -87,14 +129,18 @@ function readUsageAccessState(): UsageAccessState {
   if (!hasUsageAccessMethods(module)) {
     return {
       granted: false,
+      overlayGranted: hasOverlayMethods(module) ? module!.isOverlayPermissionGranted!() : false,
       isAvailable: false,
+      overlayAvailable: hasOverlayMethods(module),
       isRelevant: true,
     };
   }
 
   return {
     granted: module!.isUsageAccessGranted!(),
+    overlayGranted: hasOverlayMethods(module) ? module!.isOverlayPermissionGranted!() : false,
     isAvailable: true,
+    overlayAvailable: hasOverlayMethods(module),
     isRelevant: true,
   };
 }
@@ -133,9 +179,19 @@ export function useAndroidUsageAccess() {
     await module!.openUsageAccessSettings!();
   }, []);
 
+  const openOverlaySettings = React.useCallback(async () => {
+    const module = getUsageAccessModule();
+    if (Platform.OS !== "android" || !hasOverlayMethods(module)) {
+      return;
+    }
+
+    await module!.openOverlaySettings!();
+  }, []);
+
   return {
     ...state,
     openSettings,
+    openOverlaySettings,
     refresh,
   };
 }
@@ -180,4 +236,35 @@ export async function getUsageEvents(options?: {
 
 export function hasUsageEventsBridge() {
   return hasUsageEventsMethod(getUsageAccessModule());
+}
+
+export async function setBlockingConfig(config: BlockingConfig) {
+  const module = getUsageAccessModule();
+  if (Platform.OS !== "android" || !hasBlockingMonitorMethods(module)) {
+    return;
+  }
+
+  await module!.setBlockingConfig!(JSON.stringify(config));
+}
+
+export async function startBlockingMonitor() {
+  const module = getUsageAccessModule();
+  if (Platform.OS !== "android" || !hasBlockingMonitorMethods(module)) {
+    return;
+  }
+
+  await module!.startBlockingMonitor!();
+}
+
+export async function stopBlockingMonitor() {
+  const module = getUsageAccessModule();
+  if (Platform.OS !== "android" || !hasBlockingMonitorMethods(module)) {
+    return;
+  }
+
+  await module!.stopBlockingMonitor!();
+}
+
+export function hasBlockingMonitorBridge() {
+  return hasBlockingMonitorMethods(getUsageAccessModule());
 }

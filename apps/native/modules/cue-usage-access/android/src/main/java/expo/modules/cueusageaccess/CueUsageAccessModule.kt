@@ -8,6 +8,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -90,7 +91,7 @@ class CueUsageAccessModule : Module() {
     }
   }
 
-  private fun hasUsageAccess(context: Context): Boolean {
+  internal fun hasUsageAccess(context: Context): Boolean {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
 
     val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -114,6 +115,17 @@ class CueUsageAccessModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("CueUsageAccess")
 
+    Function("isOverlayPermissionGranted") {
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        true
+      } else {
+        Settings.canDrawOverlays(context)
+      }
+    }
+
     Function("isUsageAccessGranted") {
       val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available")
@@ -130,6 +142,41 @@ class CueUsageAccessModule : Module() {
       }
 
       context.startActivity(intent)
+    }
+
+    AsyncFunction("openOverlaySettings") {
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      val intent = Intent(
+        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+        Uri.parse("package:${context.packageName}")
+      ).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+
+      context.startActivity(intent)
+    }
+
+    AsyncFunction("setBlockingConfig") { configJson: String ->
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      CueBlockingConfigStore.save(context, configJson)
+    }
+
+    AsyncFunction("startBlockingMonitor") {
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      CueBlockingMonitorService.start(context)
+    }
+
+    AsyncFunction("stopBlockingMonitor") {
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      CueBlockingMonitorService.stop(context)
     }
 
     AsyncFunction("getRecentlyUsedApps") { sinceMs: Double, limit: Int ->

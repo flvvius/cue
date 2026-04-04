@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { Container } from "@/components/container";
 
 const onboardingSteps = [
-  "Grant Android usage access so Cue can read real sessions",
+  "Grant Android usage access and display-over-apps permission",
   "Exclude the essential apps that should always stay available",
   "Choose a default session limit",
   "Pick a few better alternatives for your interruption moments",

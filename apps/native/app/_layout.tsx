@@ -25,6 +25,7 @@ import { LiveNudgeHost } from "@/components/live-nudge-host";
 import { LiveRecommendationHost } from "@/components/live-recommendation-host";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { BreakStateProvider } from "@/contexts/break-state-context";
+import { useAndroidBlockingMonitor } from "@/lib/blocking-monitor";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export const unstable_settings = {
@@ -95,8 +96,12 @@ function NavigationGate() {
       usageAccess.isRelevant &&
       usageAccess.isAvailable &&
       !usageAccess.granted;
+    const needsAndroidOverlayAccess = Platform.OS === "android" &&
+      usageAccess.isRelevant &&
+      usageAccess.overlayAvailable &&
+      !usageAccess.overlayGranted;
 
-    if (needsAndroidUsageAccess) {
+    if (needsAndroidUsageAccess || needsAndroidOverlayAccess) {
       const inPermissionStep = inOnboarding && segments[1] === "permission";
 
       if (!inPermissionStep) {
@@ -121,7 +126,7 @@ function NavigationGate() {
       router.replace("/(drawer)");
       return;
     }
-  }, [currentUser, isLoaded, isSignedIn, router, segments, usageAccess.granted, usageAccess.isAvailable, usageAccess.isRelevant]);
+  }, [currentUser, isLoaded, isSignedIn, router, segments, usageAccess.granted, usageAccess.isAvailable, usageAccess.isRelevant, usageAccess.overlayAvailable, usageAccess.overlayGranted]);
 
   if (!isLoaded || (isSignedIn && (currentUser === undefined || currentUser === null))) {
     return (
@@ -147,6 +152,11 @@ function StackLayout() {
   );
 }
 
+function BlockingMonitorBootstrap() {
+  useAndroidBlockingMonitor();
+  return null;
+}
+
 export default function Layout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -167,6 +177,7 @@ export default function Layout() {
           <KeyboardProvider>
             <AppThemeProvider>
               <BreakStateProvider>
+                <BlockingMonitorBootstrap />
                 <HeroUINativeProvider>
                   <View className="flex-1">
                     <NavigationGate />

@@ -25,6 +25,8 @@ export default function OnboardingPermissionScreen() {
   const nextHref = getNextHref(params.next);
   const isAndroid = Platform.OS === "android";
   const needsPermission = isAndroid && usageAccess.isRelevant && !usageAccess.granted;
+  const needsOverlayPermission = isAndroid && usageAccess.isRelevant && !usageAccess.overlayGranted;
+  const hasMissingPermission = needsPermission || needsOverlayPermission;
 
   const handlePrimaryPress = async () => {
     if (!isAndroid) {
@@ -37,14 +39,21 @@ export default function OnboardingPermissionScreen() {
       return;
     }
 
-    if (!needsPermission) {
+    if (!hasMissingPermission) {
       router.replace(nextHref);
       return;
     }
 
     setIsOpeningSettings(true);
     try {
-      await usageAccess.openSettings();
+      if (needsPermission) {
+        await usageAccess.openSettings();
+        return;
+      }
+
+      if (needsOverlayPermission) {
+        await usageAccess.openOverlaySettings();
+      }
     } finally {
       setIsOpeningSettings(false);
     }
@@ -56,7 +65,9 @@ export default function OnboardingPermissionScreen() {
       ? "Refresh status"
       : needsPermission
         ? "Open usage access settings"
-        : "Continue";
+        : needsOverlayPermission
+          ? "Allow display over apps"
+          : "Continue";
 
   return (
     <Container className="bg-background px-5 py-8" isScrollable={false}>
@@ -65,11 +76,10 @@ export default function OnboardingPermissionScreen() {
           Permission
         </Text>
         <Text className="mt-4 text-3xl leading-10 text-foreground font-['Inter_700Bold']">
-          Let Cue read your screen-time usage.
+          Give Cue the Android access it needs to actually step in.
         </Text>
         <Text className="mt-3 text-base leading-7 text-secondary font-['Inter_400Regular']">
-          Android exposes this through a system settings page, not a popup. Cue needs usage access
-          so it can read foreground app sessions and enforce calmer limits with real data.
+          Cue needs two Android settings: usage access to read foreground sessions, and display-over-apps permission so it can put a real blocker on top of over-limit apps.
         </Text>
 
         <View className="mt-8 gap-3">
@@ -83,10 +93,18 @@ export default function OnboardingPermissionScreen() {
           </View>
           <View className="rounded-2xl border border-border bg-surface px-4 py-4">
             <Text className="text-muted text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+              What we show
+            </Text>
+            <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
+              A full-screen blocker over apps that cross the limit, plus a path back into Cue to start a break.
+            </Text>
+          </View>
+          <View className="rounded-2xl border border-border bg-surface px-4 py-4">
+            <Text className="text-muted text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
               What happens next
             </Text>
             <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
-              Tap the button below, enable Cue in Usage Access, then come back here. We re-check automatically when the app resumes.
+              Tap the button below, enable the missing setting, then come back here. Cue re-checks automatically when the app resumes.
             </Text>
           </View>
           {!isAndroid ? (
@@ -116,13 +134,22 @@ export default function OnboardingPermissionScreen() {
                 Cue is not enabled yet in Android&apos;s Usage Access settings.
               </Text>
             </View>
+          ) : needsOverlayPermission ? (
+            <View className="rounded-2xl border border-warning/30 bg-warning/12 px-4 py-4">
+              <Text className="text-warning text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
+                Overlay missing
+              </Text>
+              <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
+                Cue still needs Android&apos;s display-over-apps permission so it can actually block an app after the limit is reached.
+              </Text>
+            </View>
           ) : (
             <View className="rounded-2xl border border-success/30 bg-success/12 px-4 py-4">
               <Text className="text-success text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
-                Access granted
+                Ready to enforce
               </Text>
               <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
-                Android usage access is enabled. You can continue.
+                Usage access and overlay permission are both enabled. You can continue.
               </Text>
             </View>
           )}
@@ -142,7 +169,7 @@ export default function OnboardingPermissionScreen() {
               </Text>
             </View>
           </Pressable>
-          {isAndroid && usageAccess.isAvailable && needsPermission && (
+          {isAndroid && usageAccess.isAvailable && hasMissingPermission && (
             <Pressable
               onPress={usageAccess.refresh}
               className="rounded-xl border border-border bg-surface px-5 py-4"

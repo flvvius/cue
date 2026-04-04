@@ -13,7 +13,9 @@
     "android": {
       "package": "com.hack.cue",
       "permissions": [
-        "android.permission.PACKAGE_USAGE_STATS"
+        "android.permission.PACKAGE_USAGE_STATS",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.FOREGROUND_SERVICE"
       ]
     },
     "web": {
