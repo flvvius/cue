@@ -5,14 +5,7 @@ import React from "react";
 import { AppState, Platform } from "react-native";
 
 import { getUsageEvents, hasUsageEventsBridge, type RawUsageEvent, useAndroidUsageAccess } from "@/lib/usage-access";
-
-export type ComputedUsageSession = {
-  appPackage: string;
-  appName: string;
-  startTime: number;
-  endTime: number;
-  durationMs: number;
-};
+import { computeSessionsFromUsageEvents } from "@/lib/usage-session-utils";
 
 export type SessionSyncStatus = {
   lastSyncedAt: number | null;
@@ -22,47 +15,6 @@ export type SessionSyncStatus = {
   bridgeReady: boolean;
   isSyncing: boolean;
 };
-
-function computeSessionsFromUsageEvents(
-  events: RawUsageEvent[],
-  minimumDurationMs = 2000,
-): ComputedUsageSession[] {
-  const sortedEvents = [...events].sort((left, right) => left.timestamp - right.timestamp);
-  const activeSessions = new Map<string, RawUsageEvent>();
-  const sessions: ComputedUsageSession[] = [];
-
-  for (const event of sortedEvents) {
-    const activeSession = activeSessions.get(event.appPackage);
-
-    if (event.eventType === "foreground") {
-      if (!activeSession || event.timestamp >= activeSession.timestamp) {
-        activeSessions.set(event.appPackage, event);
-      }
-      continue;
-    }
-
-    if (!activeSession) {
-      continue;
-    }
-
-    const durationMs = event.timestamp - activeSession.timestamp;
-    activeSessions.delete(event.appPackage);
-
-    if (durationMs < minimumDurationMs) {
-      continue;
-    }
-
-    sessions.push({
-      appPackage: event.appPackage,
-      appName: activeSession.appName,
-      startTime: activeSession.timestamp,
-      endTime: event.timestamp,
-      durationMs,
-    });
-  }
-
-  return sessions;
-}
 
 export function useUsageSessionSync() {
   const { isLoaded, isSignedIn } = useAuth();

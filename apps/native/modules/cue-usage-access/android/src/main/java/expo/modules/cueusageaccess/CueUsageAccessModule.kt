@@ -14,24 +14,43 @@ import android.provider.Settings
 import java.util.Locale
 
 class CueUsageAccessModule : Module() {
+  private fun fallbackAppName(packageName: String): String {
+    val lastSegment = packageName.substringAfterLast('.', packageName)
+    return lastSegment
+      .replace('_', ' ')
+      .replace('-', ' ')
+      .split(' ')
+      .filter { it.isNotBlank() }
+      .joinToString(" ") { segment ->
+        segment.replaceFirstChar { character ->
+          if (character.isLowerCase()) {
+            character.titlecase(Locale.ROOT)
+          } else {
+            character.toString()
+          }
+        }
+      }
+      .ifBlank { packageName }
+  }
+
   private fun resolveAppInfo(context: Context, packageName: String): Map<String, Any>? {
     return try {
       val applicationInfo = context.packageManager.getApplicationInfo(packageName, 0)
-      val appName = context.packageManager.getApplicationLabel(applicationInfo).toString().trim()
+      val resolvedLabel = context.packageManager.getApplicationLabel(applicationInfo).toString().trim()
+      val appName = if (resolvedLabel.isBlank()) fallbackAppName(packageName) else resolvedLabel
       val isSystemApp =
         (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
           (applicationInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
 
-      if (appName.isBlank()) {
-        null
-      } else {
-        mapOf(
-          "appName" to appName,
-          "isSystemApp" to isSystemApp,
-        )
-      }
+      mapOf(
+        "appName" to appName,
+        "isSystemApp" to isSystemApp,
+      )
     } catch (_: Exception) {
-      null
+      mapOf(
+        "appName" to fallbackAppName(packageName),
+        "isSystemApp" to false,
+      )
     }
   }
 
@@ -101,7 +120,6 @@ class CueUsageAccessModule : Module() {
       val usageStatsManager =
         context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
           ?: return@AsyncFunction emptyList<Map<String, Any>>()
-      val packageManager = context.packageManager
       val now = System.currentTimeMillis()
       val startTime = sinceMs.toLong().coerceAtMost(now)
 
@@ -110,8 +128,7 @@ class CueUsageAccessModule : Module() {
         .asSequence()
         .filter { usageStat ->
           usageStat.packageName != context.packageName &&
-            usageStat.lastTimeUsed > 0 &&
-            usageStat.totalTimeInForeground > 0
+            usageStat.lastTimeUsed >= startTime
         }
         .mapNotNull { usageStat ->
           val appInfo = resolveAppInfo(context, usageStat.packageName) ?: return@mapNotNull null
@@ -162,7 +179,7 @@ class CueUsageAccessModule : Module() {
       val rawEvents = mutableListOf<Map<String, Any>>()
       val safeLimit = limit.coerceAtLeast(1)
 
-      while (usageEvents.hasNextEvent() && rawEvents.size < safeLimit) {
+      while (usageEvents.hasNextEvent()) {
         usageEvents.getNextEvent(event)
 
         val packageName = event.packageName ?: continue
@@ -186,7 +203,9 @@ class CueUsageAccessModule : Module() {
         )
       }
 
-      rawEvents.sortedBy { it["timestamp"] as Long }
+      rawEvents
+        .takeLast(safeLimit)
+        .sortedBy { it["timestamp"] as Long }
     }
   }
 }

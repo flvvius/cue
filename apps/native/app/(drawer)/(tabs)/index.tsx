@@ -3,9 +3,11 @@ import { useQuery } from "convex/react";
 import { Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { useEnforcementPreview } from "@/lib/enforcement-preview";
 
 export default function Home() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
+  const enforcementPreview = useEnforcementPreview();
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -93,6 +95,67 @@ export default function Home() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             The UI is ready for real nudge activity as soon as the enforcement loop starts writing records.
           </Text>
+        </View>
+
+        <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
+          <Text className="text-accent text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Enforcement preview
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {enforcementPreview.activeSession
+              ? `${enforcementPreview.activeSession.appName} is currently being tracked`
+              : enforcementPreview.warmSession
+                ? `${enforcementPreview.warmSession.appName} can resume without reset`
+                : "No active monitored session right now"}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {enforcementPreview.activeSession
+              ? `${Math.round(enforcementPreview.activeSession.durationMs / 60000)} min so far against a ${enforcementPreview.activeSession.limitMinutes} min limit.`
+              : enforcementPreview.warmSession
+                ? `Reopening within ${Math.ceil(enforcementPreview.warmSession.graceRemainingMs / 1000)} seconds will continue the same session instead of resetting it.`
+                : enforcementPreview.bridgeReady
+                  ? "This turns the raw Android events into the local enforcement state the future nudge loop will use."
+                  : "The raw-event bridge is not available in the current build yet."}
+          </Text>
+
+          {enforcementPreview.mergedSessions.length > 0 && (
+            <View className="mt-4 gap-3">
+              {enforcementPreview.mergedSessions.slice(0, 3).map((session) => (
+                <View
+                  key={`${session.appPackage}-${session.startTime}`}
+                  className="rounded-2xl border border-border bg-surface px-4 py-4"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-foreground text-base font-['Inter_600SemiBold']">
+                      {session.appName}
+                    </Text>
+                    <Text
+                      className={`text-xs font-['Inter_600SemiBold'] ${
+                        session.isExceeded
+                          ? "text-danger"
+                          : session.isAtLimit
+                            ? "text-warning"
+                            : session.isApproachingLimit
+                              ? "text-accent"
+                              : "text-success"
+                      }`}
+                    >
+                      {session.isExceeded
+                        ? "Exceeded"
+                        : session.isAtLimit
+                          ? "At limit"
+                          : session.isApproachingLimit
+                            ? "Approaching"
+                            : "Safe"}
+                    </Text>
+                  </View>
+                  <Text className="mt-1 text-secondary text-sm font-['Inter_400Regular']">
+                    {Math.round(session.durationMs / 60000)} / {session.limitMinutes} min
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View className="rounded-2xl border border-border bg-surface p-5">
