@@ -12,6 +12,7 @@ import type * as aiPipeline from "../aiPipeline.js";
 import type * as aiPipelinePayload from "../aiPipelinePayload.js";
 import type * as alternatives from "../alternatives.js";
 import type * as dashboard from "../dashboard.js";
+import type * as demoCompanion from "../demoCompanion.js";
 import type * as demoData from "../demoData.js";
 import type * as excludedApps from "../excludedApps.js";
 import type * as healthCheck from "../healthCheck.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   aiPipelinePayload: typeof aiPipelinePayload;
   alternatives: typeof alternatives;
   dashboard: typeof dashboard;
+  demoCompanion: typeof demoCompanion;
   demoData: typeof demoData;
   excludedApps: typeof excludedApps;
   healthCheck: typeof healthCheck;
