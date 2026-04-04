@@ -133,71 +133,85 @@ export function useEnforcementPreview() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const usageAccess = useAndroidUsageAccess();
   const { sessionResetCutoffs } = useBreakState();
-  const [state, setState] = React.useState<EnforcementPreviewState>({
-    bridgeReady: hasUsageEventsBridge(),
-    isRefreshing: false,
-    activeSession: null,
-    warmSession: null,
-    mergedSessions: [],
-  });
+  const [rawEvents, setRawEvents] = React.useState<RawUsageEvent[]>([]);
+  const [bridgeReady, setBridgeReady] = React.useState(hasUsageEventsBridge());
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [now, setNow] = React.useState(() => Date.now());
+  const [appState, setAppState] = React.useState(AppState.currentState);
 
-  const refresh = React.useCallback(async () => {
-    if (Platform.OS !== "android" || !usageAccess.granted) {
-      setState((currentState) => ({
-        ...currentState,
-        bridgeReady: hasUsageEventsBridge(),
-        activeSession: null,
-        warmSession: null,
-        mergedSessions: [],
-      }));
-      return;
-    }
-
-    if (!hasUsageEventsBridge() || !overview) {
-      setState((currentState) => ({
-        ...currentState,
-        bridgeReady: hasUsageEventsBridge(),
-      }));
-      return;
-    }
-
-    setState((currentState) => ({
-      ...currentState,
-      bridgeReady: true,
-      isRefreshing: true,
-    }));
-
-    try {
-      const rawEvents = await getUsageEvents({ hours: 6, limit: 3000 });
-      const recommendationLimits = new Map(
-        (overview.recommendations ?? []).map((recommendation) => [
+  const recommendationLimits = React.useMemo(
+    () =>
+      new Map(
+        (overview?.recommendations ?? []).map((recommendation) => [
           recommendation.appPackage,
           recommendation.sessionLimitMinutes,
         ]),
-      );
+      ),
+    [overview?.recommendations],
+  );
 
-      const preview = buildPreviewFromEvents(
-        rawEvents,
-        new Set((overview.excludedApps ?? []).map((app) => app.appPackage)),
-        sessionResetCutoffs,
-        recommendationLimits,
-        overview.defaultLimitMinutes,
-        Date.now(),
-      );
-
-      setState({
-        bridgeReady: true,
-        isRefreshing: false,
-        ...preview,
-      });
-    } catch {
-      setState((currentState) => ({
-        ...currentState,
-        bridgeReady: hasUsageEventsBridge(),
-        isRefreshing: false,
-      }));
+  const derivedPreview = React.useMemo(() => {
+    if (Platform.OS !== "android" || !usageAccess.granted || !overview || !bridgeReady) {
+      return {
+        activeSession: null,
+        warmSession: null,
+        mergedSessions: [],
+      };
     }
-  }, [overview, sessionResetCutoffs, usageAccess.granted]);
+
+    return buildPreviewFromEvents(
+      rawEvents,
+      new Set((overview.excludedApps ?? []).map((app) => app.appPackage)),
+      sessionResetCutoffs,
+      recommendationLimits,
+      overview.defaultLimitMinutes,
+      now,
+    );
+  }, [
+    bridgeReady,
+    now,
+    overview,
+    rawEvents,
+    recommendationLimits,
+    sessionResetCutoffs,
+    usageAccess.granted,
+  ]);
+
+  const state = React.useMemo<EnforcementPreviewState>(() => ({
+    bridgeReady,
+    isRefreshing,
+    ...derivedPreview,
+  }), [
+    bridgeReady,
+    derivedPreview,
+    isRefreshing,
+  ]);
+
+  const refresh = React.useCallback(async () => {
+    const nextBridgeReady = hasUsageEventsBridge();
+    setBridgeReady(nextBridgeReady);
+
+    if (Platform.OS !== "android" || !usageAccess.granted) {
+      setRawEvents([]);
+      return;
+    }
+
+    if (!nextBridgeReady || !overview) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      const nextRawEvents = await getUsageEvents({ hours: 6, limit: 3000 });
+      setRawEvents(nextRawEvents);
+      setNow(Date.now());
+    } catch {
+      setBridgeReady(hasUsageEventsBridge());
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [overview, usageAccess.granted]);
 
   React.useEffect(() => {
     void refresh();
@@ -208,18 +222,39 @@ export function useEnforcementPreview() {
       return;
     }
 
-    const intervalId = setInterval(() => {
-      void refresh();
+    const pollIntervalId = setInterval(() => {
+      if (appState === "active") {
+        void refresh();
+      }
     }, 15000);
 
     return () => {
-      clearInterval(intervalId);
+      clearInterval(pollIntervalId);
     };
-  }, [refresh]);
+  }, [appState, refresh]);
+
+  React.useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const tickIntervalId = setInterval(() => {
+      if (appState === "active") {
+        setNow(Date.now());
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(tickIntervalId);
+    };
+  }, [appState]);
 
   React.useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      setAppState(nextState);
+
       if (nextState === "active") {
+        setNow(Date.now());
         void refresh();
       }
     });
