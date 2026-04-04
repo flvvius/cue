@@ -1,10 +1,12 @@
-import { Link, Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Button, Surface } from "heroui-native";
 import { Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 
 export default function NotFoundScreen() {
+  const router = useRouter();
+
   return (
     <>
       <Stack.Screen options={{ title: "Not Found" }} />
@@ -16,9 +18,9 @@ export default function NotFoundScreen() {
             <Text className="text-muted text-sm text-center mb-4">
               The page you're looking for doesn't exist.
             </Text>
-            <Link href="/" asChild>
-              <Button size="sm">Go Home</Button>
-            </Link>
+            <Button size="sm" onPress={() => router.replace("/")}>
+              Go Home
+            </Button>
           </Surface>
         </View>
       </Container>

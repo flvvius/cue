@@ -132,7 +132,7 @@ export default function TodosScreen() {
                   </View>
                   <Button
                     isIconOnly
-                    variant="ghost"
+                    variant="tertiary"
                     onPress={() => handleDeleteTodo(todo._id)}
                     size="sm"
                   >

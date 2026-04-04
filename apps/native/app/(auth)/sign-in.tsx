@@ -3,6 +3,8 @@ import { type Href, Link, useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { GoogleAuthButton } from "@/components/google-auth-button";
+
 function pushDecoratedUrl(
   router: ReturnType<typeof useRouter>,
   decorateUrl: (url: string) => string,
@@ -130,6 +132,8 @@ export default function Page() {
     <View style={styles.container}>
       <Text style={styles.title}>Sign in</Text>
       {statusMessage && <Text style={styles.helper}>{statusMessage}</Text>}
+      <GoogleAuthButton />
+      <Text style={styles.divider}>or continue with email</Text>
       <Text style={styles.label}>Email address</Text>
       <TextInput
         style={styles.input}
@@ -244,5 +248,10 @@ const styles = StyleSheet.create({
   helper: {
     color: "#555555",
     fontSize: 13,
+  },
+  divider: {
+    color: "#666666",
+    fontSize: 13,
+    textAlign: "center",
   },
 });

@@ -1,5 +1,4 @@
 import { ClerkProvider, useAuth } from "@clerk/tanstack-react-start";
-import { auth } from "@clerk/tanstack-react-start/server";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
 import { Toaster } from "@cue/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
@@ -8,21 +7,13 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
-  useRouteContext,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { createServerFn } from "@tanstack/react-start";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 
 import Header from "../components/header";
 
 import appCss from "../index.css?url";
-
-const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
-  const clerkAuth = await auth();
-  const token = await clerkAuth.getToken();
-  return { userId: clerkAuth.userId, token };
-});
 
 export interface RouterAppContext {
   queryClient: QueryClient;
@@ -50,22 +41,15 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
     ],
   }),
-
   component: RootDocument,
-  beforeLoad: async (ctx) => {
-    const { userId, token } = await fetchClerkAuth();
-    if (token) {
-      ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
-    }
-    return { userId, token };
-  },
 });
 
 function RootDocument() {
-  const context = useRouteContext({ from: Route.id });
+  const { convexQueryClient } = Route.useRouteContext();
+
   return (
     <ClerkProvider>
-      <ConvexProviderWithClerk client={context.convexQueryClient.convexClient} useAuth={useAuth}>
+      <ConvexProviderWithClerk client={convexQueryClient.convexClient} useAuth={useAuth}>
         <html lang="en" className="dark">
           <head>
             <HeadContent />
