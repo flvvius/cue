@@ -49,3 +49,6 @@ coverage
 .cache
 tmp
 temp
+
+# Local notes
+Cue Roadmap.md

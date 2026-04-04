@@ -3,15 +3,39 @@
     "scheme": "cue",
     "userInterfaceStyle": "automatic",
     "orientation": "default",
+    "ios": {
+      "bundleIdentifier": "com.hack.cue",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.hack.cue"
+    },
     "web": {
       "bundler": "metro"
     },
+    "owner": "flvvivs",
     "name": "cue",
-    "slug": "cue",
-    "plugins": ["expo-font"],
+    "slug": "hack-cue",
+    "plugins": [
+      "expo-font",
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2773a207-b4a1-4499-8e5b-9d44c4b5eec2"
+      }
     }
   }
 }
