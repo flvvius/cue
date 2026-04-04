@@ -12,6 +12,7 @@ import type * as alternatives from "../alternatives.js";
 import type * as dashboard from "../dashboard.js";
 import type * as excludedApps from "../excludedApps.js";
 import type * as healthCheck from "../healthCheck.js";
+import type * as nudges from "../nudges.js";
 import type * as privateData from "../privateData.js";
 import type * as usageSessions from "../usageSessions.js";
 import type * as users from "../users.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   excludedApps: typeof excludedApps;
   healthCheck: typeof healthCheck;
+  nudges: typeof nudges;
   privateData: typeof privateData;
   usageSessions: typeof usageSessions;
   users: typeof users;

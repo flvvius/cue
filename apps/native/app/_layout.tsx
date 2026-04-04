@@ -21,6 +21,7 @@ import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
+import { LiveNudgeHost } from "@/components/live-nudge-host";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
 
@@ -137,6 +138,7 @@ function StackLayout() {
       <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+      <Stack.Screen name="break-timer" options={{ headerShown: false }} />
       <Stack.Screen name="sso-callback" options={{ headerShown: false }} />
       <Stack.Screen name="modal" options={{ title: "Modal", presentation: "modal" }} />
     </Stack>
@@ -163,7 +165,10 @@ export default function Layout() {
           <KeyboardProvider>
             <AppThemeProvider>
               <HeroUINativeProvider>
-                <NavigationGate />
+                <View className="flex-1">
+                  <NavigationGate />
+                  <LiveNudgeHost />
+                </View>
               </HeroUINativeProvider>
             </AppThemeProvider>
           </KeyboardProvider>

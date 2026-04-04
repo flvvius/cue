@@ -1,6 +1,7 @@
 import { api } from "@cue/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
-import { Text, View } from "react-native";
+import { useMutation, useQuery } from "convex/react";
+import React from "react";
+import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 
@@ -8,6 +9,65 @@ export default function SettingsTab() {
   const currentUser = useQuery(api.users.current);
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const alternatives = useQuery(api.alternatives.listForCurrentUser);
+  const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
+  const queueNudge = useMutation(api.nudges.queueForCurrentUser);
+  const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
+  const [isQueueing, setIsQueueing] = React.useState(false);
+  const [isClearing, setIsClearing] = React.useState(false);
+  const [debugStatus, setDebugStatus] = React.useState<string | null>(null);
+
+  const handleSendTestNudge = React.useCallback(async () => {
+    if (isQueueing) {
+      return;
+    }
+
+    setIsQueueing(true);
+    try {
+      if (activeNudge?.triggerApp === "debug.manual") {
+        await respondToNudge({
+          nudgeId: activeNudge._id,
+          status: "dismissed",
+        });
+      }
+
+      const result = await queueNudge({
+        triggerApp: "debug.manual",
+        type: "session_check",
+        message: `Debug nudge for ${currentUser?.name ?? "you"}: step away for two minutes and reset your attention.${alternatives?.[0]?.activity ? ` Try ${alternatives[0].activity.toLowerCase()} instead.` : ""}`,
+        alternative: alternatives?.[0]?.activity,
+        cooldownMinutes: 0,
+      });
+
+      if (result.created) {
+        setDebugStatus("Fresh test nudge created.");
+      } else if (result.reason === "pending_exists") {
+        setDebugStatus("A matching test nudge is already pending. Clear it first.");
+      } else if (result.reason === "cooldown_active") {
+        setDebugStatus("That test nudge is still in cooldown.");
+      } else {
+        setDebugStatus("No new test nudge was created.");
+      }
+    } finally {
+      setIsQueueing(false);
+    }
+  }, [activeNudge, alternatives, currentUser?.name, isQueueing, queueNudge, respondToNudge]);
+
+  const handleClearActiveNudge = React.useCallback(async () => {
+    if (!activeNudge || isClearing) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      await respondToNudge({
+        nudgeId: activeNudge._id,
+        status: "dismissed",
+      });
+      setDebugStatus("Active nudge cleared.");
+    } finally {
+      setIsClearing(false);
+    }
+  }, [activeNudge, isClearing, respondToNudge]);
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -73,6 +133,50 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {(overview?.recommendations ?? []).slice(0, 3).map((recommendation) => `${recommendation.appName}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
           </Text>
+        </View>
+
+        <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
+          <Text className="text-accent text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Nudge testing
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            Fire a debug nudge instantly
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Real thresholds are currently: approaching at 80%, at limit at 100%, and exceeded at 120% of the session limit. Use the debug trigger below if you want to test the card without waiting.
+          </Text>
+          <View className="mt-4 flex-row gap-3">
+            <Pressable
+              onPress={() => void handleSendTestNudge()}
+              disabled={isQueueing}
+              className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || isQueueing ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
+                {isQueueing ? "Sending..." : "Send test nudge"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void handleClearActiveNudge()}
+              disabled={!activeNudge || isClearing}
+              className="flex-1 rounded-xl border border-border bg-surface px-4 py-4"
+              style={({ pressed }) => [{ opacity: pressed || !activeNudge || isClearing ? 0.92 : 1 }]}
+            >
+              <Text className="text-center text-base text-secondary font-['Inter_600SemiBold']">
+                {isClearing ? "Clearing..." : "Clear active"}
+              </Text>
+            </Pressable>
+          </View>
+          <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {activeNudge
+              ? `Active nudge: ${activeNudge.triggerApp}`
+              : "No pending nudge right now."}
+          </Text>
+          {debugStatus ? (
+            <Text className="mt-2 text-sm leading-6 text-accent font-['Inter_500Medium']">
+              {debugStatus}
+            </Text>
+          ) : null}
         </View>
       </View>
     </Container>

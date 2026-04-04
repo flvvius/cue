@@ -14,9 +14,8 @@ import android.provider.Settings
 import java.util.Locale
 
 class CueUsageAccessModule : Module() {
-  private fun fallbackAppName(packageName: String): String {
-    val lastSegment = packageName.substringAfterLast('.', packageName)
-    return lastSegment
+  private fun prettifyFallbackSegment(rawSegment: String): String {
+    return rawSegment
       .replace('_', ' ')
       .replace('-', ' ')
       .split(' ')
@@ -30,7 +29,31 @@ class CueUsageAccessModule : Module() {
           }
         }
       }
-      .ifBlank { packageName }
+  }
+
+  private fun fallbackAppName(packageName: String): String {
+    val genericSegments = setOf(
+      "android",
+      "app",
+      "apps",
+      "mobile",
+      "client",
+      "phone",
+      "tablet",
+      "debug",
+      "release",
+      "prod",
+    )
+
+    val selectedSegment = packageName
+      .split('.')
+      .asReversed()
+      .firstOrNull { segment ->
+        segment.isNotBlank() && segment.lowercase(Locale.ROOT) !in genericSegments
+      }
+      ?: packageName.substringAfterLast('.', packageName)
+
+    return prettifyFallbackSegment(selectedSegment).ifBlank { packageName }
   }
 
   private fun resolveAppInfo(context: Context, packageName: String): Map<String, Any>? {
