@@ -20,7 +20,7 @@ import appCss from "../index.css?url";
 
 const fetchClerkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const clerkAuth = await auth();
-  const token = await clerkAuth.getToken({ template: "convex" });
+  const token = await clerkAuth.getToken();
   return { userId: clerkAuth.userId, token };
 });
 
