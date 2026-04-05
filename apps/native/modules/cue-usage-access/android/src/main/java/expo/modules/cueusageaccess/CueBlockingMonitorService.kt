@@ -38,8 +38,7 @@ private const val MERGE_WINDOW_MS = 2 * 60 * 1000L
 
 private fun formatLimitLabel(limitMinutes: Double): String {
   return if (limitMinutes < 1.0) {
-    val seconds = (limitMinutes * 60).toInt().coerceAtLeast(1)
-    "$seconds-second"
+    "1-minute"
   } else if (limitMinutes % 1.0 == 0.0) {
     "${limitMinutes.toInt()}-minute"
   } else {
@@ -204,7 +203,7 @@ class CueBlockingMonitorService : Service() {
       val remainingMinutes = ((breakBlock.endsAt - now).coerceAtLeast(0L) / 60000L) + 1L
       "Cue is holding $appName closed while your break finishes. About $remainingMinutes minute${if (remainingMinutes == 1L) "" else "s"} left."
     } else {
-      "You've hit your ${formatLimitLabel(limitMinutes)} limit on $appName. Close it now or open Cue to take a reset."
+      "You crossed your ${formatLimitLabel(limitMinutes)} limit on $appName. Open Cue to take the break or leave the app now."
     }
 
     val thresholdBucket = when {
@@ -227,8 +226,10 @@ class CueBlockingMonitorService : Service() {
     )
 
     showOverlay(
-      title = "Time to step away from $appName",
+      appName = appName,
+      title = if (breakBlock != null) "Break protection is active" else "Cue stepped in",
       body = bodyText,
+      isBreakBlock = breakBlock != null,
     )
   }
 
@@ -322,7 +323,7 @@ class CueBlockingMonitorService : Service() {
     }
   }
 
-  private fun showOverlay(title: String, body: String) {
+  private fun showOverlay(appName: String, title: String, body: String, isBreakBlock: Boolean) {
     overlayHandler.post {
       val manager = windowManager ?: return@post
 
@@ -334,19 +335,35 @@ class CueBlockingMonitorService : Service() {
         val content = LinearLayout(this).apply {
           orientation = LinearLayout.VERTICAL
           setBackgroundColor(Color.parseColor("#0F172A"))
-          setPadding(48, 48, 48, 48)
+          setPadding(48, 44, 48, 44)
           elevation = 24f
+        }
+
+        val eyebrowView = TextView(this).apply {
+          setTextColor(Color.parseColor("#FBBF24"))
+          textSize = 12f
+          text = "CUE INTERRUPT"
+          setPadding(0, 0, 0, 20)
+        }
+
+        val appChipView = TextView(this).apply {
+          setTextColor(Color.parseColor("#E2E8F0"))
+          textSize = 13f
+          setBackgroundColor(Color.parseColor("#172036"))
+          setPadding(22, 12, 22, 12)
         }
 
         val titleView = TextView(this).apply {
           setTextColor(Color.parseColor("#F8FAFC"))
           textSize = 24f
+          setPadding(0, 22, 0, 16)
         }
 
         val bodyView = TextView(this).apply {
           setTextColor(Color.parseColor("#CBD5E1"))
           textSize = 16f
           setLineSpacing(0f, 1.2f)
+          setPadding(0, 0, 0, 12)
         }
 
         val buttons = LinearLayout(this).apply {
@@ -356,6 +373,8 @@ class CueBlockingMonitorService : Service() {
 
         val homeButton = Button(this).apply {
           text = "Leave this app"
+          setBackgroundColor(Color.parseColor("#1E293B"))
+          setTextColor(Color.parseColor("#E2E8F0"))
           setOnClickListener {
             hideOverlay()
             val homeIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -368,6 +387,8 @@ class CueBlockingMonitorService : Service() {
 
         val cueButton = Button(this).apply {
           text = "Open Cue"
+          setBackgroundColor(Color.parseColor("#34D399"))
+          setTextColor(Color.parseColor("#020617"))
           setOnClickListener {
             hideOverlay()
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
@@ -378,8 +399,17 @@ class CueBlockingMonitorService : Service() {
           }
         }
 
+        val firstButtonParams = LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.MATCH_PARENT,
+          LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply {
+          bottomMargin = 18
+        }
+
+        buttons.addView(cueButton, firstButtonParams)
         buttons.addView(homeButton)
-        buttons.addView(cueButton)
+        content.addView(eyebrowView)
+        content.addView(appChipView)
         content.addView(titleView)
         content.addView(bodyView)
         content.addView(buttons)
@@ -414,11 +444,15 @@ class CueBlockingMonitorService : Service() {
         runCatching {
           manager.addView(root, layoutParams)
           overlayView = root
+          root.setTag(1001, appChipView)
           overlayTitleView = titleView
           overlayBodyView = bodyView
         }
       }
 
+      (overlayView?.getTag(1001) as? TextView)?.apply {
+        text = if (isBreakBlock) "$appName is cooling down" else "$appName is over limit"
+      }
       overlayTitleView?.text = title
       overlayBodyView?.text = body
       overlayView?.visibility = View.VISIBLE

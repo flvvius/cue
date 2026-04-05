@@ -1,4 +1,5 @@
 import { api } from "@cue/backend/convex/_generated/api";
+import { Feather } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
@@ -16,6 +17,63 @@ function formatBreakScheduleWindow(window: {
   breakAfterMinutes: number;
 }) {
   return `${window.from}-${window.to} -> ${window.breakAfterMinutes}m break`;
+}
+
+function StatusPill({
+  label,
+  value,
+  tone = "neutral",
+  icon,
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "success" | "warning";
+  icon: keyof typeof Feather.glyphMap;
+}) {
+  const palette =
+    tone === "success"
+      ? {
+          borderColor: "#14532d",
+          backgroundColor: "#052e16",
+          iconColor: "#34d399",
+          textColor: "#d1fae5",
+        }
+      : tone === "warning"
+        ? {
+            borderColor: "#7c2d12",
+            backgroundColor: "#431407",
+            iconColor: "#fb923c",
+            textColor: "#ffedd5",
+          }
+        : {
+            borderColor: "#334155",
+            backgroundColor: "#0f172a",
+            iconColor: "#94a3b8",
+            textColor: "#e2e8f0",
+          };
+
+  return (
+    <View
+      className="min-w-[48%] rounded-2xl border px-4 py-3"
+      style={{
+        borderColor: palette.borderColor,
+        backgroundColor: palette.backgroundColor,
+      }}
+    >
+      <View className="flex-row items-center gap-2">
+        <Feather name={icon} size={15} color={palette.iconColor} />
+        <Text className="text-[11px] uppercase tracking-[1.3px] text-muted font-['Inter_600SemiBold']">
+          {label}
+        </Text>
+      </View>
+      <Text
+        className="mt-2 text-sm font-['Inter_600SemiBold']"
+        style={{ color: palette.textColor }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 export default function Home() {
@@ -43,6 +101,12 @@ export default function Home() {
   );
   const blockingBridgeReady = hasBlockingMonitorBridge();
   const blockerArmed = usageAccess.granted && usageAccess.overlayGranted && blockingBridgeReady && isHydrated;
+  const latestImpactEvent = liveImpactEvents[0] ?? null;
+  const earlyEndCountToday = liveImpactEvents.filter((event: any) => {
+    const eventDate = new Date(event.createdAt);
+    const now = new Date();
+    return eventDate.toDateString() === now.toDateString();
+  }).length;
 
   return (
     <Container className="bg-background px-5 py-8">
@@ -57,6 +121,44 @@ export default function Home() {
           <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             A simple home for today’s usage totals, default limit, and the state of the local enforcement pipeline.
           </Text>
+        </View>
+
+        <View className="rounded-3xl border border-brand/25 bg-[#0b1229] p-5">
+          <Text className="text-accent text-xs uppercase tracking-[1.5px] font-['Inter_600SemiBold']">
+            Demo readiness
+          </Text>
+          <Text className="mt-2 text-foreground text-2xl font-['Inter_700Bold']">
+            {blockerArmed ? "Cue is ready to intervene live" : "Finish setup before the demo"}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            This strip is the fast proof that monitoring, blocking, AI limits, and the live accountability layer are all awake.
+          </Text>
+          <View className="mt-4 flex-row flex-wrap gap-3">
+            <StatusPill
+              label="Monitoring"
+              value={usageAccess.granted ? "Usage pipeline live" : "Usage access needed"}
+              tone={usageAccess.granted ? "success" : "warning"}
+              icon="activity"
+            />
+            <StatusPill
+              label="Blocking"
+              value={blockerArmed ? "Armed on device" : "Needs setup"}
+              tone={blockerArmed ? "success" : "warning"}
+              icon="shield"
+            />
+            <StatusPill
+              label="AI limits"
+              value={recommendations.length ? `${recommendations.length} app rules loaded` : "Using default only"}
+              tone={recommendations.length ? "success" : "neutral"}
+              icon="cpu"
+            />
+            <StatusPill
+              label="Buddy feed"
+              value={latestImpactEvent ? "Realtime events flowing" : "Waiting for first event"}
+              tone={latestImpactEvent ? "success" : "neutral"}
+              icon="users"
+            />
+          </View>
         </View>
 
         <View className="flex-row gap-3">
@@ -133,7 +235,7 @@ export default function Home() {
                 Fast test mode
               </Text>
               <Text className="mt-2 text-sm leading-6 text-foreground font-['Inter_500Medium']">
-                Cue is using temporary 1-minute limits so you can trigger nudges and blockers quickly. Restore fallback recs when you want normal demo values back.
+                Cue is using temporary 1-minute limits so you can trigger nudges and blockers quickly.
               </Text>
             </View>
           ) : null}
@@ -245,26 +347,65 @@ export default function Home() {
           ) : null}
         </View>
 
-        <View className="rounded-2xl border border-danger/30 bg-danger/10 p-5">
-          <Text className="text-danger text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
-            Buddy system
-          </Text>
-          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
-            Early break endings across the app
-          </Text>
-          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            Every connected device sees these in realtime. For the demo, this doubles as a live accountability feed.
-          </Text>
+        <View className="overflow-hidden rounded-3xl border border-danger/25 bg-[#220b11] p-5">
+          <View
+            className="absolute inset-x-0 top-0 h-1"
+            style={{ backgroundColor: "#f87171" }}
+          />
+          <View className="flex-row items-start justify-between gap-4">
+            <View className="flex-1">
+              <Text className="text-danger text-xs uppercase tracking-[1.5px] font-['Inter_600SemiBold']">
+                Live impact
+              </Text>
+              <Text className="mt-2 text-foreground text-2xl font-['Inter_700Bold']">
+                Early exits are visible to everyone
+              </Text>
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                This is the accountability hook for the demo: friends, parents, or teammates can all see when someone cuts a break short.
+              </Text>
+            </View>
+            <View className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3">
+              <Text className="text-danger text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                Today
+              </Text>
+              <Text className="mt-1 text-foreground text-xl font-['Inter_700Bold']">
+                {earlyEndCountToday}
+              </Text>
+            </View>
+          </View>
+
+          {latestImpactEvent ? (
+            <View className="mt-4 rounded-2xl border border-danger/20 bg-background px-4 py-4">
+              <View className="flex-row items-center gap-2">
+                <View className="h-2 w-2 rounded-full bg-danger" />
+                <Text className="text-danger text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                  Happening now
+                </Text>
+              </View>
+              <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+                {latestImpactEvent.actorName} ended a break early on {resolveDisplayAppName(latestImpactEvent.appName, latestImpactEvent.appPackage)}
+              </Text>
+              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                Broadcast at {new Date(latestImpactEvent.createdAt).toLocaleTimeString()} across every connected Cue device.
+              </Text>
+            </View>
+          ) : null}
+
           <View className="mt-4 gap-3">
             {liveImpactEvents.length ? (
-              liveImpactEvents.slice(0, 5).map((event: any) => (
+              liveImpactEvents.slice(0, 5).map((event: any, index: number) => (
                 <View
                   key={event._id}
                   className="rounded-2xl border border-border bg-background px-4 py-4"
                 >
-                  <Text className="text-foreground text-base font-['Inter_600SemiBold']">
-                    {event.actorName} ended a break early
-                  </Text>
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Text className="flex-1 text-foreground text-base font-['Inter_600SemiBold']">
+                      {event.actorName} ended a break early
+                    </Text>
+                    <Text className="text-muted text-xs font-['Inter_500Medium']">
+                      #{liveImpactEvents.length - index}
+                    </Text>
+                  </View>
                   <Text className="mt-1 text-secondary text-sm leading-6 font-['Inter_400Regular']">
                     {resolveDisplayAppName(event.appName, event.appPackage)}
                   </Text>
