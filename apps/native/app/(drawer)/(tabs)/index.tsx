@@ -7,6 +7,7 @@ import { Container } from "@/components/container";
 import { useBreakState } from "@/contexts/break-state-context";
 import { resolveDisplayAppName } from "@/lib/app-display-name";
 import { useEnforcementPreview } from "@/lib/enforcement-preview";
+import { formatDisplayLimitCompact, formatDisplayLimitMinutes } from "@/lib/limit-display";
 import { hasBlockingMonitorBridge, useAndroidUsageAccess } from "@/lib/usage-access";
 
 function formatBreakScheduleWindow(window: {
@@ -19,6 +20,7 @@ function formatBreakScheduleWindow(window: {
 
 export default function Home() {
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
+  const socialEvents = useQuery((api as any).socialEvents.recentForCurrentUser);
   const enforcementPreview = useEnforcementPreview();
   const usageAccess = useAndroidUsageAccess();
   const { activeBreak, isHydrated } = useBreakState();
@@ -26,6 +28,7 @@ export default function Home() {
   const monitoredApps = overview?.monitoredApps ?? [];
   const recommendations = overview?.recommendations ?? [];
   const excludedApps = overview?.excludedApps ?? [];
+  const liveImpactEvents = socialEvents?.events ?? [];
 
   const acceptedNudges = overview?.nudgeStats.accepted ?? 0;
   const dismissedNudges = overview?.nudgeStats.dismissed ?? 0;
@@ -98,7 +101,7 @@ export default function Home() {
                       {resolveDisplayAppName(app.appName, app.appPackage)}
                     </Text>
                     <Text className="text-secondary text-sm font-['Inter_400Regular']">
-                      {app.totalMinutes} / {app.limitMinutes} min
+                      {app.totalMinutes} / {formatDisplayLimitCompact(app.limitMinutes)}
                     </Text>
                   </View>
                   <View className="mt-2 h-2 rounded-full bg-elevated overflow-hidden">
@@ -146,7 +149,7 @@ export default function Home() {
                       {resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}
                     </Text>
                     <Text className="text-accent text-sm font-['Inter_600SemiBold']">
-                      {recommendation.sessionLimitMinutes} min
+                      {formatDisplayLimitCompact(recommendation.sessionLimitMinutes)}
                     </Text>
                   </View>
                   <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
@@ -242,6 +245,42 @@ export default function Home() {
           ) : null}
         </View>
 
+        <View className="rounded-2xl border border-danger/30 bg-danger/10 p-5">
+          <Text className="text-danger text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Buddy system
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            Early break endings across the app
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            Every connected device sees these in realtime. For the demo, this doubles as a live accountability feed.
+          </Text>
+          <View className="mt-4 gap-3">
+            {liveImpactEvents.length ? (
+              liveImpactEvents.slice(0, 5).map((event: any) => (
+                <View
+                  key={event._id}
+                  className="rounded-2xl border border-border bg-background px-4 py-4"
+                >
+                  <Text className="text-foreground text-base font-['Inter_600SemiBold']">
+                    {event.actorName} ended a break early
+                  </Text>
+                  <Text className="mt-1 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                    {resolveDisplayAppName(event.appName, event.appPackage)}
+                  </Text>
+                  <Text className="mt-2 text-muted text-xs font-['Inter_400Regular']">
+                    {new Date(event.createdAt).toLocaleTimeString()}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text className="text-secondary text-sm leading-6 font-['Inter_400Regular']">
+                No news from your buddies. End a break early on another signed-in device to see the feed light up.
+              </Text>
+            )}
+          </View>
+        </View>
+
         <View className="rounded-2xl border border-brand/30 bg-brand/12 p-5">
           <Text className="text-accent text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
             Blocker status
@@ -297,7 +336,7 @@ export default function Home() {
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             {enforcementPreview.activeSession
-              ? `${Math.round(enforcementPreview.activeSession.durationMs / 60000)} min so far against a ${enforcementPreview.activeSession.limitMinutes} min limit.`
+              ? `${Math.round(enforcementPreview.activeSession.durationMs / 60000)} min so far against a ${formatDisplayLimitMinutes(enforcementPreview.activeSession.limitMinutes)} limit.`
               : enforcementPreview.warmSession
                 ? `Reopening within ${Math.ceil(enforcementPreview.warmSession.graceRemainingMs / 1000)} seconds will continue the same session instead of resetting it.`
                 : enforcementPreview.bridgeReady
@@ -337,7 +376,7 @@ export default function Home() {
                     </Text>
                   </View>
                   <Text className="mt-1 text-secondary text-sm font-['Inter_400Regular']">
-                    {Math.round(session.durationMs / 60000)} / {session.limitMinutes} min
+                    {Math.round(session.durationMs / 60000)} / {formatDisplayLimitCompact(session.limitMinutes)}
                   </Text>
                 </View>
               ))}

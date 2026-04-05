@@ -54,6 +54,19 @@ export default defineSchema({
     .index("by_user_start", ["userId", "startedAt"])
     .index("by_user_app_start", ["userId", "appPackage", "startedAt"]),
 
+  socialEvents: defineTable({
+    actorUserId: v.id("users"),
+    actorName: v.string(),
+    type: v.union(
+      v.literal("break_ended_early"),
+    ),
+    appPackage: v.string(),
+    appName: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_time", ["createdAt"])
+    .index("by_actor_time", ["actorUserId", "createdAt"]),
+
   patterns: defineTable({
     userId: v.id("users"),
     appPackage: v.string(),
@@ -85,9 +98,19 @@ export default defineSchema({
     ),
     effectiveDate: v.string(),
     createdAt: v.number(),
-  })
+    })
     .index("by_user", ["userId"])
     .index("by_user_date", ["userId", "effectiveDate"]),
+
+  metabolicEngineStates: defineTable({
+    userId: v.id("users"),
+    lastSyncTime: v.string(),
+    globalModifier: v.number(),
+    appWeights: v.any(),
+    appPoints: v.any(),
+    lastRawResponse: v.optional(v.any()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   nudges: defineTable({
     userId: v.id("users"),
@@ -103,6 +126,15 @@ export default defineSchema({
     ),
     message: v.string(),
     alternative: v.optional(v.string()),
+    generationSource: v.optional(
+      v.union(
+        v.literal("openai"),
+        v.literal("custom_endpoint"),
+        v.literal("fallback"),
+      ),
+    ),
+    generationModel: v.optional(v.string()),
+    generationFailureReason: v.optional(v.string()),
     thresholdBucket: v.optional(
       v.union(
         v.literal("approaching"),

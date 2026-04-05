@@ -36,6 +36,17 @@ private const val BLOCKING_CHANNEL_ID = "cue-blocking-monitor"
 private const val BLOCKING_NOTIFICATION_ID = 33014
 private const val MERGE_WINDOW_MS = 2 * 60 * 1000L
 
+private fun formatLimitLabel(limitMinutes: Double): String {
+  return if (limitMinutes < 1.0) {
+    val seconds = (limitMinutes * 60).toInt().coerceAtLeast(1)
+    "$seconds-second"
+  } else if (limitMinutes % 1.0 == 0.0) {
+    "${limitMinutes.toInt()}-minute"
+  } else {
+    String.format(Locale.US, "%.2f-minute", limitMinutes)
+  }
+}
+
 class CueBlockingMonitorService : Service() {
   private data class TrackedSession(
     val startTime: Long,
@@ -177,7 +188,8 @@ class CueBlockingMonitorService : Service() {
       ?.takeIf { it.appPackage == activePackage && now < it.endsAt }
     val limitMinutes = config.rulesByPackage[activePackage]?.limitMinutes ?: config.defaultLimitMinutes
     val sessionDurationMs = (now - activeSession.startTime).coerceAtLeast(0L)
-    val isOverLimit = sessionDurationMs >= limitMinutes * 60 * 1000L
+    val limitDurationMs = (limitMinutes * 60_000.0).toLong().coerceAtLeast(1L)
+    val isOverLimit = sessionDurationMs >= limitDurationMs
 
     if (!isOverLimit && breakBlock == null) {
       clearBlockedState()
@@ -192,12 +204,12 @@ class CueBlockingMonitorService : Service() {
       val remainingMinutes = ((breakBlock.endsAt - now).coerceAtLeast(0L) / 60000L) + 1L
       "Cue is holding $appName closed while your break finishes. About $remainingMinutes minute${if (remainingMinutes == 1L) "" else "s"} left."
     } else {
-      "You've hit your $limitMinutes-minute limit on $appName. Close it now or open Cue to take a reset."
+      "You've hit your ${formatLimitLabel(limitMinutes)} limit on $appName. Close it now or open Cue to take a reset."
     }
 
     val thresholdBucket = when {
-      sessionDurationMs >= limitMinutes * 60 * 1000L * 12L / 10L -> "exceeded"
-      sessionDurationMs >= limitMinutes * 60 * 1000L -> "at_limit"
+      sessionDurationMs >= (limitDurationMs * 12L / 10L) -> "exceeded"
+      sessionDurationMs >= limitDurationMs -> "at_limit"
       else -> "approaching"
     }
 

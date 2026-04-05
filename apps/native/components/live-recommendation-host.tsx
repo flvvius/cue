@@ -7,6 +7,7 @@ import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { resolveDisplayAppName } from "@/lib/app-display-name";
+import { formatDisplayLimitMinutes } from "@/lib/limit-display";
 
 type RecommendationSummary = {
   appPackage: string;
@@ -48,14 +49,14 @@ function buildRecommendationMessage(
   for (const recommendation of nextRecommendations) {
     const previousRecommendation = previousByPackage.get(recommendation.appPackage);
     if (!previousRecommendation) {
-      return `New limit for ${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}: ${recommendation.sessionLimitMinutes} minutes.`;
+      return `New limit for ${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}: ${formatDisplayLimitMinutes(recommendation.sessionLimitMinutes)}.`;
     }
 
     if (
       previousRecommendation.sessionLimitMinutes !== recommendation.sessionLimitMinutes ||
       buildRecommendationSignature([previousRecommendation]) !== buildRecommendationSignature([recommendation])
     ) {
-      return `${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)} updated to ${recommendation.sessionLimitMinutes} minutes with refreshed break windows.`;
+      return `${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)} updated to ${formatDisplayLimitMinutes(recommendation.sessionLimitMinutes)} with refreshed break windows.`;
     }
   }
 

@@ -40,6 +40,7 @@ export const requestForCurrentUser = mutation({
     alternatives: v.optional(v.array(v.string())),
     alternative: v.optional(v.string()),
     cooldownMinutes: v.optional(v.number()),
+    requireModelSuccess: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await getCurrentIdentity(ctx);
@@ -60,6 +61,7 @@ export const requestForCurrentUser = mutation({
       alternatives: args.alternatives,
       alternative: args.alternative,
       cooldownMinutes: args.cooldownMinutes,
+      requireModelSuccess: args.requireModelSuccess,
       nudgeStyle: user.nudgeStyle,
     });
 

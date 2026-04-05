@@ -72,6 +72,9 @@ async function queueNudgeForUser(params: {
   type: "limit_warning" | "pattern_break" | "session_check" | "ai_limit" | "break_time";
   message: string;
   alternative?: string;
+  generationSource?: "openai" | "custom_endpoint" | "fallback";
+  generationModel?: string;
+  generationFailureReason?: string;
   thresholdBucket?: "approaching" | "at_limit" | "exceeded";
   breakDurationMinutes?: number;
   sessionStartTime?: number;
@@ -128,6 +131,9 @@ async function queueNudgeForUser(params: {
     type: params.type,
     message: params.message,
     alternative: params.alternative,
+    generationSource: params.generationSource,
+    generationModel: params.generationModel,
+    generationFailureReason: params.generationFailureReason,
     thresholdBucket: params.thresholdBucket,
     breakDurationMinutes: params.breakDurationMinutes,
     sessionStartTime: params.sessionStartTime,
@@ -148,6 +154,15 @@ export const queueForCurrentUser = mutation({
     type: nudgeTypeValidator,
     message: v.string(),
     alternative: v.optional(v.string()),
+    generationSource: v.optional(
+      v.union(
+        v.literal("openai"),
+        v.literal("custom_endpoint"),
+        v.literal("fallback"),
+      ),
+    ),
+    generationModel: v.optional(v.string()),
+    generationFailureReason: v.optional(v.string()),
     thresholdBucket: v.optional(thresholdBucketValidator),
     breakDurationMinutes: v.optional(v.number()),
     sessionStartTime: v.optional(v.number()),
@@ -167,6 +182,9 @@ export const queueForCurrentUser = mutation({
       type: args.type,
       message: args.message,
       alternative: args.alternative,
+      generationSource: args.generationSource,
+      generationModel: args.generationModel,
+      generationFailureReason: args.generationFailureReason,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
       sessionStartTime: args.sessionStartTime,
@@ -182,6 +200,15 @@ export const queueGeneratedForUser = internalMutation({
     type: nudgeTypeValidator,
     message: v.string(),
     alternative: v.optional(v.string()),
+    generationSource: v.optional(
+      v.union(
+        v.literal("openai"),
+        v.literal("custom_endpoint"),
+        v.literal("fallback"),
+      ),
+    ),
+    generationModel: v.optional(v.string()),
+    generationFailureReason: v.optional(v.string()),
     thresholdBucket: v.optional(thresholdBucketValidator),
     breakDurationMinutes: v.optional(v.number()),
     sessionStartTime: v.optional(v.number()),
@@ -195,6 +222,9 @@ export const queueGeneratedForUser = internalMutation({
       type: args.type,
       message: args.message,
       alternative: args.alternative,
+      generationSource: args.generationSource,
+      generationModel: args.generationModel,
+      generationFailureReason: args.generationFailureReason,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
       sessionStartTime: args.sessionStartTime,

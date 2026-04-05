@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 
 import { internalQuery } from "./_generated/server";
+import {
+  buildMetabolicPayload,
+  normalizeMetabolicEngineState,
+} from "./metabolicEngine";
 
 export const buildExportPayloadForClerkUser = internalQuery({
   args: {
@@ -16,10 +20,11 @@ export const buildExportPayloadForClerkUser = internalQuery({
       throw new Error("User record not found");
     }
 
-    const [excludedApps, sessions, recommendations] = await Promise.all([
+    const [excludedApps, sessions, recommendations, engineState] = await Promise.all([
       ctx.db.query("excludedApps").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
       ctx.db.query("usageSessions").withIndex("by_user_time", (q) => q.eq("userId", user._id)).collect(),
       ctx.db.query("aiRecommendations").withIndex("by_user", (q) => q.eq("userId", user._id)).collect(),
+      ctx.db.query("metabolicEngineStates").withIndex("by_user", (q) => q.eq("userId", user._id)).unique(),
     ]);
 
     const now = Date.now();
@@ -36,36 +41,39 @@ export const buildExportPayloadForClerkUser = internalQuery({
       }
     }
 
+    const metabolicPayload = buildMetabolicPayload({
+      clerkId: user.clerkId,
+      timeZone: user.timezone,
+      sessions: recentSessions,
+      state: normalizeMetabolicEngineState(engineState, now),
+      now,
+    });
+
     return {
-      userId: user.clerkId,
-      convexUserId: String(user._id),
-      exportedAt: new Date(now).toISOString(),
-      rangeStart: new Date(startMs).toISOString(),
-      rangeEnd: new Date(now).toISOString(),
-      profile: {
-        name: user.name,
-        timezone: user.timezone,
-        nudgeStyle: user.nudgeStyle,
-        defaultSessionLimitMinutes: user.defaultSessionLimitMinutes,
+      ...metabolicPayload,
+      convex_user_id: String(user._id),
+      exported_at: new Date(now).toISOString(),
+      metadata: {
+        profile: {
+          name: user.name,
+          timezone: user.timezone,
+          nudgeStyle: user.nudgeStyle,
+          defaultSessionLimitMinutes: user.defaultSessionLimitMinutes,
+        },
+        excludedApps: excludedApps.map((app) => ({
+          appPackage: app.appPackage,
+          appName: app.appName,
+        })),
+        currentRecommendations: [...latestRecommendations.values()].map((recommendation) => ({
+          appPackage: recommendation.appPackage,
+          appName: recommendation.appName,
+          sessionLimitMinutes: recommendation.sessionLimitMinutes,
+          breakSchedule: recommendation.breakSchedule,
+          effectiveDate: recommendation.effectiveDate,
+        })),
+        rangeStart: new Date(startMs).toISOString(),
+        rangeEnd: new Date(now).toISOString(),
       },
-      excludedApps: excludedApps.map((app) => ({
-        appPackage: app.appPackage,
-        appName: app.appName,
-      })),
-      sessions: recentSessions.map((session) => ({
-        appPackage: session.appPackage,
-        appName: session.appName,
-        startTime: session.startTime,
-        endTime: session.endTime,
-        durationMs: session.durationMs,
-      })),
-      currentRecommendations: [...latestRecommendations.values()].map((recommendation) => ({
-        appPackage: recommendation.appPackage,
-        appName: recommendation.appName,
-        sessionLimitMinutes: recommendation.sessionLimitMinutes,
-        breakSchedule: recommendation.breakSchedule,
-        effectiveDate: recommendation.effectiveDate,
-      })),
     };
   },
 });

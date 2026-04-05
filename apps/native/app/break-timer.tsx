@@ -42,6 +42,7 @@ export default function BreakTimerScreen() {
   );
   const [remainingMs, setRemainingMs] = React.useState(() => Math.max(0, initialEndsAt - Date.now()));
   const hasFinishedRef = React.useRef(false);
+  const hasAutoDismissedRef = React.useRef(false);
   const totalDurationMs = durationMinutes * 60 * 1000;
 
   React.useEffect(() => {
@@ -73,6 +74,21 @@ export default function BreakTimerScreen() {
     hasFinishedRef.current = true;
     finishBreak(appPackage, initialEndsAt);
   }, [appPackage, finishBreak, initialEndsAt, isComplete]);
+
+  React.useEffect(() => {
+    if (!isComplete || hasAutoDismissedRef.current) {
+      return;
+    }
+
+    hasAutoDismissedRef.current = true;
+    const timeoutId = setTimeout(() => {
+      router.replace("/(drawer)/(tabs)");
+    }, 750);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isComplete, router]);
 
   const handleEndEarly = React.useCallback(() => {
     finishBreak(appPackage, Date.now());

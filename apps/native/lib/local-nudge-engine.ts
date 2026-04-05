@@ -3,10 +3,40 @@ import { useMutation, useQuery } from "convex/react";
 import React from "react";
 import { AppState, Platform } from "react-native";
 
+import { useBreakState } from "@/contexts/break-state-context";
 import { resolveBreakDurationMinutes } from "@/lib/break-duration";
 import { type ThresholdBucket } from "@/lib/enforcement-thresholds";
 import { useEnforcementPreview } from "@/lib/enforcement-preview";
 import { getBlockingSnapshot } from "@/lib/usage-access";
+
+const BLOCKING_SNAPSHOT_HANDOFF_WINDOW_MS = 4_000;
+const suppressedTriggerKeys = new Set<string>();
+
+function buildTriggerKey(
+  appPackage: string,
+  sessionStartTime: number,
+  bucket: Exclude<ThresholdBucket, "safe">,
+) {
+  return `${appPackage}:${sessionStartTime}:${bucket}`;
+}
+
+export function suppressLocalNudgeForSession(params: {
+  appPackage: string;
+  sessionStartTime?: number | null;
+  thresholdBucket?: ThresholdBucket | null;
+}) {
+  if (
+    params.sessionStartTime == null ||
+    params.thresholdBucket == null ||
+    params.thresholdBucket === "safe"
+  ) {
+    return;
+  }
+
+  suppressedTriggerKeys.add(
+    buildTriggerKey(params.appPackage, params.sessionStartTime, params.thresholdBucket),
+  );
+}
 
 function resolveNudgeType(bucket: Exclude<ThresholdBucket, "safe">) {
   if (bucket === "exceeded") {
@@ -26,6 +56,7 @@ export function useLocalNudgeEngine() {
   const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
   const requestGeneratedNudge = useMutation((api as any).nudgeRequests.requestForCurrentUser);
   const enforcementPreview = useEnforcementPreview();
+  const { activeBreak, sessionResetCutoffs } = useBreakState();
   const lastAttemptAtRef = React.useRef(new Map<string, number>());
   const [blockingSnapshot, setBlockingSnapshot] = React.useState(() => getBlockingSnapshot());
 
@@ -43,6 +74,7 @@ export function useLocalNudgeEngine() {
 
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState !== "active") {
+        suppressedTriggerKeys.clear();
         return;
       }
 
@@ -60,9 +92,20 @@ export function useLocalNudgeEngine() {
   }, []);
 
   React.useEffect(() => {
+    if (activeBreak) {
+      return;
+    }
+
     const previewCandidate = enforcementPreview.activeSession ?? enforcementPreview.warmSession;
+    const snapshotIsFresh = blockingSnapshot != null &&
+      Date.now() - blockingSnapshot.blockedAt <= BLOCKING_SNAPSHOT_HANDOFF_WINDOW_MS;
+    const snapshotWasReset = blockingSnapshot != null &&
+      (sessionResetCutoffs[blockingSnapshot.appPackage] ?? 0) >= blockingSnapshot.sessionStartTime;
     const snapshotCandidate =
-      blockingSnapshot?.reason === "limit"
+      !previewCandidate &&
+      blockingSnapshot?.reason === "limit" &&
+      snapshotIsFresh &&
+      !snapshotWasReset
         ? {
             appPackage: blockingSnapshot.appPackage,
             appName: blockingSnapshot.appName,
@@ -82,7 +125,10 @@ export function useLocalNudgeEngine() {
       return;
     }
 
-    const triggerKey = `${candidateSession.appPackage}:${candidateSession.startTime}:${bucket}`;
+    const triggerKey = buildTriggerKey(candidateSession.appPackage, candidateSession.startTime, bucket);
+    if (suppressedTriggerKeys.has(triggerKey)) {
+      return;
+    }
     const matchingPendingNudge = activeNudge &&
       activeNudge.triggerApp === candidateSession.appPackage &&
       activeNudge.thresholdBucket === bucket &&
@@ -119,6 +165,7 @@ export function useLocalNudgeEngine() {
       cooldownMinutes: bucket === "approaching" ? 10 : 0,
     });
   }, [
+    activeBreak,
     activeNudge,
     alternatives,
     blockingSnapshot,
@@ -126,5 +173,6 @@ export function useLocalNudgeEngine() {
     enforcementPreview.warmSession,
     overview,
     requestGeneratedNudge,
+    sessionResetCutoffs,
   ]);
 }

@@ -1,30 +1,34 @@
+import { useAuth, useUser } from "@clerk/expo";
 import { api } from "@cue/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { SignOutButton } from "@/components/sign-out-button";
 import { resolveDisplayAppName } from "@/lib/app-display-name";
-import { useEnforcementPreview } from "@/lib/enforcement-preview";
+import { formatDisplayLimitCompact } from "@/lib/limit-display";
+import { useUsageSessionSync } from "@/lib/session-sync";
 import { useAndroidUsageAccess } from "@/lib/usage-access";
 
 export default function SettingsTab() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const currentUser = useQuery(api.users.current);
+  const healthCheck = useQuery(api.healthCheck.get);
+  const privateData = useQuery(api.privateData.get);
   const overview = useQuery(api.dashboard.overviewForCurrentUser);
   const alternatives = useQuery(api.alternatives.listForCurrentUser);
   const activeNudge = useQuery(api.nudges.getActiveForCurrentUser);
-  const exportRuns = useQuery((api as any).aiOps.recentExportRunsForCurrentUser);
-  const webhookEvents = useQuery((api as any).aiOps.recentWebhookEventsForCurrentUser);
   const queueNudge = useMutation(api.nudges.queueForCurrentUser);
   const requestGeneratedNudge = useMutation((api as any).nudgeRequests.requestForCurrentUser);
   const respondToNudge = useMutation(api.nudges.respondToCurrentUser);
   const seedFallbackRecommendations = useMutation(api.recommendations.seedFallbackForCurrentUser);
   const seedFastTestRecommendations = useMutation(api.recommendations.seedFastTestForCurrentUser);
   const clearRecommendations = useMutation(api.recommendations.clearForCurrentUser);
-  const triggerExportForCurrentUser = useAction((api as any).aiPipeline.triggerExportForCurrentUser);
   const seedDemoDataForCurrentUser = useMutation((api as any).demoData.seedForCurrentUser);
   const usageAccess = useAndroidUsageAccess();
-  const enforcementPreview = useEnforcementPreview();
+  const sessionSyncStatus = useUsageSessionSync();
   const [isQueueing, setIsQueueing] = React.useState(false);
   const [isQueueingAiNudge, setIsQueueingAiNudge] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
@@ -32,7 +36,6 @@ export default function SettingsTab() {
   const [isSeedingRecommendations, setIsSeedingRecommendations] = React.useState(false);
   const [isSeedingFastTestRecommendations, setIsSeedingFastTestRecommendations] = React.useState(false);
   const [isClearingRecommendations, setIsClearingRecommendations] = React.useState(false);
-  const [isTriggeringExport, setIsTriggeringExport] = React.useState(false);
   const [isSeedingDemoData, setIsSeedingDemoData] = React.useState(false);
 
   const handleSendTestNudge = React.useCallback(async () => {
@@ -136,9 +139,10 @@ export default function SettingsTab() {
         alternatives: (alternatives ?? []).slice(0, 5).map((item: any) => item.activity),
         alternative: alternatives?.[0]?.activity,
         cooldownMinutes: 0,
+        requireModelSuccess: true,
       });
 
-      setDebugStatus(`AI nudge requested for ${targetApp.appName}. If OpenAI is wired, the next nudge should use model-generated copy.`);
+      setDebugStatus(`AI nudge requested for ${targetApp.appName}. This test now fails loudly instead of silently using stock fallback copy.`);
     } finally {
       setIsQueueingAiNudge(false);
     }
@@ -196,32 +200,6 @@ export default function SettingsTab() {
     }
   }, [isSeedingFastTestRecommendations, seedFastTestRecommendations]);
 
-  const handleTriggerExport = React.useCallback(async () => {
-    if (isTriggeringExport) {
-      return;
-    }
-
-    setIsTriggeringExport(true);
-    try {
-      const result = await triggerExportForCurrentUser({});
-      if (result.sent) {
-        setDebugStatus(`Export sent to ${result.endpoint} with ${result.payload.sessions.length} sessions.`);
-        return;
-      }
-
-      if (result.reason === "missing_endpoint") {
-        setDebugStatus(
-          `Export payload is ready locally: ${result.payload.sessions.length} sessions, ${result.payload.excludedApps.length} excluded apps, but no AWS endpoint is configured yet.`,
-        );
-        return;
-      }
-
-      setDebugStatus(`Export failed with status ${result.status ?? "unknown"}.`);
-    } finally {
-      setIsTriggeringExport(false);
-    }
-  }, [isTriggeringExport, triggerExportForCurrentUser]);
-
   const handleSeedDemoData = React.useCallback(async () => {
     if (isSeedingDemoData) {
       return;
@@ -250,6 +228,49 @@ export default function SettingsTab() {
           </Text>
           <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             A simple debug-friendly settings surface so you can verify what onboarding has already saved.
+          </Text>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Account
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {isLoaded && isSignedIn
+              ? user?.emailAddresses[0]?.emailAddress ?? "Signed in"
+              : "Loading..."}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {privateData?.message ?? "Signed in and ready to sync private Cue data."}
+          </Text>
+          <View className="mt-4 flex-row items-center justify-between">
+            <View>
+              <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+                Backend
+              </Text>
+              <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
+                {healthCheck === "OK" ? "Convex live" : healthCheck === undefined ? "Checking..." : "Offline"}
+              </Text>
+            </View>
+            <SignOutButton />
+          </View>
+        </View>
+
+        <View className="rounded-2xl border border-border bg-surface p-5">
+          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
+            Usage pipeline
+          </Text>
+          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
+            {sessionSyncStatus.isSyncing
+              ? "Syncing usage events..."
+              : sessionSyncStatus.lastSyncedAt
+                ? "Usage sessions synced"
+                : "Waiting for first sync"}
+          </Text>
+          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+            {sessionSyncStatus.bridgeReady
+              ? `Received ${sessionSyncStatus.lastReceived} sessions, inserted ${sessionSyncStatus.lastInserted}, skipped ${sessionSyncStatus.lastSkipped}.`
+              : "The installed Android build still needs the usage-event bridge."}
           </Text>
         </View>
 
@@ -337,7 +358,7 @@ export default function SettingsTab() {
             {overview?.recommendations.length ?? 0}
           </Text>
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation: any) => `${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}: ${recommendation.sessionLimitMinutes}m`).join(" • ") || "Fallback default only for now"}
+            {(overview?.recommendations ?? []).slice(0, 3).map((recommendation: any) => `${resolveDisplayAppName(recommendation.appName, recommendation.appPackage)}: ${formatDisplayLimitCompact(recommendation.sessionLimitMinutes)}`).join(" • ") || "Fallback default only for now"}
           </Text>
           <Text className="mt-3 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             Fast test mode seeds 1-minute limits for a few monitored apps so you can hit real thresholds and blocker states almost immediately.
@@ -378,67 +399,7 @@ export default function SettingsTab() {
           </View>
         </View>
 
-        <View className="rounded-2xl border border-border bg-surface p-5">
-          <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
-            AI pipeline
-          </Text>
-          <Text className="mt-2 text-foreground text-lg font-['Inter_600SemiBold']">
-            Manual export trigger
-          </Text>
-          <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-            Sends the last 24 hours of full usage data, exclusions, and profile settings to the external AI endpoint when configured. If the endpoint is missing, Cue still builds the payload so you can verify the flow safely.
-          </Text>
-          <View className="mt-4 flex-row gap-3">
-            <Pressable
-              onPress={() => void handleTriggerExport()}
-              disabled={isTriggeringExport}
-              className="flex-1 rounded-xl bg-brand-strong px-4 py-4"
-              style={({ pressed }) => [{ opacity: pressed || isTriggeringExport ? 0.92 : 1 }]}
-            >
-              <Text className="text-center text-base text-foreground font-['Inter_600SemiBold']">
-                {isTriggeringExport ? "Building..." : "Trigger export"}
-              </Text>
-            </Pressable>
-          </View>
-          {exportRuns?.runs?.[0] ? (
-            <View className="mt-4 rounded-2xl border border-border bg-background px-4 py-4">
-              <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
-                Latest export
-              </Text>
-              <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
-                {exportRuns.runs[0].sent ? "Sent to AWS endpoint" : "Not sent yet"}
-              </Text>
-              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-                {exportRuns.runs[0].sessionCount} sessions • {exportRuns.runs[0].excludedCount} exclusions • {exportRuns.runs[0].recommendationCount} current recs
-              </Text>
-              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-                {exportRuns.runs[0].endpoint ?? "No endpoint configured"}
-              </Text>
-              <Text className="mt-2 text-muted text-xs font-['Inter_400Regular']">
-                {new Date(exportRuns.runs[0].requestedAt).toLocaleString()} • {exportRuns.runs[0].reason}
-                {exportRuns.runs[0].status ? ` • HTTP ${exportRuns.runs[0].status}` : ""}
-              </Text>
-            </View>
-          ) : null}
-          {webhookEvents?.events?.[0] ? (
-            <View className="mt-3 rounded-2xl border border-border bg-background px-4 py-4">
-              <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
-                Latest webhook
-              </Text>
-              <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
-                {webhookEvents.events[0].stored ? "Recommendations stored" : "Webhook failed"}
-              </Text>
-              <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-                {webhookEvents.events[0].recommendationCount} recommendations
-                {webhookEvents.events[0].effectiveDate ? ` • ${webhookEvents.events[0].effectiveDate}` : ""}
-              </Text>
-              <Text className="mt-2 text-muted text-xs font-['Inter_400Regular']">
-                {new Date(webhookEvents.events[0].receivedAt).toLocaleString()}
-                {webhookEvents.events[0].error ? ` • ${webhookEvents.events[0].error}` : ""}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        {/* Manual export trigger intentionally hidden for now. */}
 
         <View className="rounded-2xl border border-border bg-surface p-5">
           <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
@@ -474,25 +435,7 @@ export default function SettingsTab() {
           <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
             Real thresholds are currently: approaching at 80%, at limit at 100%, and exceeded at 120% of the session limit. Use the debug trigger below if you want to test the card without waiting.
           </Text>
-          <View className="mt-4 rounded-2xl border border-border bg-background px-4 py-4">
-            <Text className="text-muted text-xs uppercase tracking-[1.4px] font-['Inter_600SemiBold']">
-              Enforcement preview
-            </Text>
-            <Text className="mt-2 text-foreground text-base font-['Inter_600SemiBold']">
-              {enforcementPreview.activeSession
-                ? `Active: ${enforcementPreview.activeSession.appName}`
-                : enforcementPreview.warmSession
-                  ? `Warm: ${enforcementPreview.warmSession.appName}`
-                  : "No tracked monitored app right now"}
-            </Text>
-            <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
-              {enforcementPreview.activeSession
-                ? `${enforcementPreview.activeSession.thresholdBucket} • ${Math.round(enforcementPreview.activeSession.durationMs / 1000)}s • limit ${enforcementPreview.activeSession.limitMinutes}m`
-                : enforcementPreview.warmSession
-                  ? `${enforcementPreview.warmSession.thresholdBucket} • ${Math.round(enforcementPreview.warmSession.durationMs / 1000)}s • limit ${enforcementPreview.warmSession.limitMinutes}m`
-                  : "Use a monitored app, then come back here to see whether Cue recognized it."}
-            </Text>
-          </View>
+          {/* Enforcement preview intentionally hidden for now. */}
           <View className="mt-4 flex-row gap-3">
             <Pressable
               onPress={() => void handleSendTestNudge()}
@@ -532,6 +475,13 @@ export default function SettingsTab() {
               ? `Active nudge: ${activeNudge.triggerApp}`
               : "No pending nudge right now."}
           </Text>
+          {activeNudge ? (
+            <Text className="mt-2 text-secondary text-sm leading-6 font-['Inter_400Regular']">
+              Source: {activeNudge.generationSource ?? "unknown"}
+              {activeNudge.generationModel ? ` • ${activeNudge.generationModel}` : ""}
+              {activeNudge.generationFailureReason ? ` • ${activeNudge.generationFailureReason}` : ""}
+            </Text>
+          ) : null}
           {debugStatus ? (
             <Text className="mt-2 text-sm leading-6 text-accent font-['Inter_500Medium']">
               {debugStatus}

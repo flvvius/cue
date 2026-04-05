@@ -4,6 +4,8 @@ import { Pressable, Text, View } from "react-native";
 type Props = {
   message: string;
   alternative?: string | null;
+  generationSource?: "openai" | "custom_endpoint" | "fallback" | null;
+  generationFailureReason?: string | null;
   onAccept: () => void;
   onDismiss: () => void;
   isSubmitting?: boolean;
@@ -12,6 +14,8 @@ type Props = {
 export function NudgeCard({
   message,
   alternative,
+  generationSource,
+  generationFailureReason,
   onAccept,
   onDismiss,
   isSubmitting = false,
@@ -38,7 +42,13 @@ export function NudgeCard({
           </Text>
         </View>
         <Text className="text-muted text-xs font-['Inter_500Medium']">
-          Right now
+          {generationSource === "openai"
+            ? "GPT"
+            : generationSource === "custom_endpoint"
+              ? "AI endpoint"
+              : generationSource === "fallback"
+                ? "Fallback"
+                : "Right now"}
         </Text>
       </View>
 
@@ -60,6 +70,12 @@ export function NudgeCard({
       <Text className="mt-4 text-sm leading-6 text-secondary font-['Inter_400Regular']">
         The goal is not punishment. It&apos;s to interrupt the loop before the next scroll turns into another fifteen minutes.
       </Text>
+
+      {generationSource === "fallback" && generationFailureReason ? (
+        <Text className="mt-3 text-xs leading-5 text-muted font-['Inter_500Medium']">
+          AI fallback: {generationFailureReason}
+        </Text>
+      ) : null}
 
       <View className="mt-6 flex-row gap-3">
         <Pressable

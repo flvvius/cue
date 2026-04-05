@@ -38,7 +38,7 @@ function addLimitState(
 ): EnforcedSession {
   const limitMinutes = recommendationLimits.get(session.appPackage) ?? defaultLimitMinutes;
   const sessionMinutes = session.durationMs / 60000;
-  const progress = sessionMinutes / Math.max(1, limitMinutes);
+  const progress = sessionMinutes / Math.max(0.05, limitMinutes);
   const thresholdBucket = resolveThresholdBucket(progress);
 
   return {

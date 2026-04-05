@@ -75,6 +75,17 @@ export const finishForCurrentUser = mutation({
       endedEarly: args.endedEarly,
     });
 
+    if (args.endedEarly) {
+      await ctx.db.insert("socialEvents", {
+        actorUserId: user._id,
+        actorName: user.name,
+        type: "break_ended_early",
+        appPackage: activeBreak.appPackage,
+        appName: activeBreak.appName,
+        createdAt: args.finishedAt,
+      });
+    }
+
     return { updated: true, breakId: activeBreak._id };
   },
 });

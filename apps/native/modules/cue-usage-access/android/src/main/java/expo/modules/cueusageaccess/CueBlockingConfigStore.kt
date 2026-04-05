@@ -11,7 +11,7 @@ private const val PREF_BLOCKING_SNAPSHOT = "blocking_snapshot_json"
 data class BlockingRule(
   val appPackage: String,
   val appName: String,
-  val limitMinutes: Int,
+  val limitMinutes: Double,
 )
 
 data class ActiveBreakConfig(
@@ -21,7 +21,7 @@ data class ActiveBreakConfig(
 
 data class BlockingConfig(
   val enabled: Boolean,
-  val defaultLimitMinutes: Int,
+  val defaultLimitMinutes: Double,
   val rulesByPackage: Map<String, BlockingRule>,
   val excludedPackages: Set<String>,
   val sessionResetCutoffs: Map<String, Long>,
@@ -31,7 +31,7 @@ data class BlockingConfig(
 data class BlockingSnapshot(
   val appPackage: String,
   val appName: String,
-  val limitMinutes: Int,
+  val limitMinutes: Double,
   val sessionStartTime: Long,
   val blockedAt: Long,
   val thresholdBucket: String,
@@ -117,7 +117,7 @@ object CueBlockingConfigStore {
       rules[appPackage] = BlockingRule(
         appPackage = appPackage,
         appName = item.optString("appName", appPackage).trim().ifBlank { appPackage },
-        limitMinutes = item.optInt("limitMinutes", payload.optInt("defaultLimitMinutes", 20)).coerceAtLeast(1),
+        limitMinutes = item.optDouble("limitMinutes", payload.optDouble("defaultLimitMinutes", 20.0)).coerceAtLeast(0.05),
       )
     }
 
@@ -155,7 +155,7 @@ object CueBlockingConfigStore {
 
     return BlockingConfig(
       enabled = payload.optBoolean("enabled", true),
-      defaultLimitMinutes = payload.optInt("defaultLimitMinutes", 20).coerceAtLeast(1),
+      defaultLimitMinutes = payload.optDouble("defaultLimitMinutes", 20.0).coerceAtLeast(0.05),
       rulesByPackage = rules,
       excludedPackages = excludedPackages,
       sessionResetCutoffs = sessionResetCutoffs,
@@ -168,7 +168,7 @@ object CueBlockingConfigStore {
     return BlockingSnapshot(
       appPackage = payload.optString("appPackage"),
       appName = payload.optString("appName"),
-      limitMinutes = payload.optInt("limitMinutes", 1).coerceAtLeast(1),
+      limitMinutes = payload.optDouble("limitMinutes", 1.0).coerceAtLeast(0.05),
       sessionStartTime = payload.optLong("sessionStartTime", 0L),
       blockedAt = payload.optLong("blockedAt", 0L),
       thresholdBucket = payload.optString("thresholdBucket", "at_limit"),

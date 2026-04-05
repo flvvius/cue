@@ -10,7 +10,7 @@ import { NudgeCard } from "@/components/nudge-card";
 import { useBreakState } from "@/contexts/break-state-context";
 import { resolveDisplayAppName } from "@/lib/app-display-name";
 import { resolveBreakDurationMinutes } from "@/lib/break-duration";
-import { useLocalNudgeEngine } from "@/lib/local-nudge-engine";
+import { suppressLocalNudgeForSession, useLocalNudgeEngine } from "@/lib/local-nudge-engine";
 import { clearNotificationForNudge, useNudgeNotifications } from "@/lib/nudge-notifications";
 
 export function LiveNudgeHost() {
@@ -60,6 +60,11 @@ export function LiveNudgeHost() {
 
       setIsSubmitting(true);
       setHandledNudgeId(activeNudge._id);
+      suppressLocalNudgeForSession({
+        appPackage: activeNudge.triggerApp,
+        sessionStartTime: activeNudge.sessionStartTime ?? null,
+        thresholdBucket: activeNudge.thresholdBucket ?? null,
+      });
       try {
         await respondToNudge({
           nudgeId: activeNudge._id,
@@ -124,6 +129,8 @@ export function LiveNudgeHost() {
       <NudgeCard
         message={activeNudge.message}
         alternative={activeNudge.alternative}
+        generationSource={activeNudge.generationSource ?? null}
+        generationFailureReason={activeNudge.generationFailureReason ?? null}
         isSubmitting={isSubmitting}
         onAccept={() => void handleRespond("accepted")}
         onDismiss={() => void handleRespond("dismissed")}

@@ -10,14 +10,14 @@ async function getCurrentIdentity(ctx: any) {
   return identity;
 }
 
-async function getUserByClerkId(ctx: any, clerkId: string) {
+export async function getUserByClerkId(ctx: any, clerkId: string) {
   return await ctx.db
     .query("users")
     .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
     .unique();
 }
 
-async function replaceRecommendationsForUser(params: {
+export async function replaceRecommendationsForUser(params: {
   ctx: any;
   userId: string;
   recommendations: Array<{
@@ -121,6 +121,7 @@ const FALLBACK_RECOMMENDATIONS = [
 const FAST_TEST_BREAK_SCHEDULE = [
   { from: "00:00", to: "23:59", breakAfterMinutes: 1 },
 ];
+const FAST_TEST_SESSION_LIMIT_MINUTES = 0.25;
 
 function buildFastTestRecommendations(
   candidates: typeof FALLBACK_RECOMMENDATIONS,
@@ -131,7 +132,7 @@ function buildFastTestRecommendations(
         {
           appPackage: "debug.fast-test",
           appName: "Cue test app",
-          sessionLimitMinutes: 1,
+          sessionLimitMinutes: FAST_TEST_SESSION_LIMIT_MINUTES,
           breakSchedule: FAST_TEST_BREAK_SCHEDULE,
         },
       ];
@@ -139,7 +140,7 @@ function buildFastTestRecommendations(
   return selectedCandidates.map((recommendation) => ({
     appPackage: recommendation.appPackage,
     appName: recommendation.appName,
-    sessionLimitMinutes: 1,
+    sessionLimitMinutes: FAST_TEST_SESSION_LIMIT_MINUTES,
     breakSchedule: FAST_TEST_BREAK_SCHEDULE,
   }));
 }
@@ -237,7 +238,7 @@ export const seedFastTestForCurrentUser = mutation({
       .map((app) => ({
         appPackage: app.appPackage,
         appName: app.appName,
-        sessionLimitMinutes: 1,
+        sessionLimitMinutes: FAST_TEST_SESSION_LIMIT_MINUTES,
         breakSchedule: FAST_TEST_BREAK_SCHEDULE,
       }));
 
@@ -264,7 +265,7 @@ export const seedFastTestForCurrentUser = mutation({
         mergedRecommendations.set(recommendation.appPackage, {
           appPackage: recommendation.appPackage,
           appName: recommendation.appName,
-          sessionLimitMinutes: 1,
+          sessionLimitMinutes: FAST_TEST_SESSION_LIMIT_MINUTES,
           breakSchedule: FAST_TEST_BREAK_SCHEDULE,
         });
       }

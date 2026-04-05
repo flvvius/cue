@@ -79,7 +79,7 @@ export const overviewForCurrentUser = query({
           ...app,
           totalMinutes,
           isOverLimit: totalMinutes > app.limitMinutes,
-          progressPercent: Math.min(100, Math.round((totalMinutes / Math.max(1, app.limitMinutes)) * 100)),
+          progressPercent: Math.min(100, Math.round((totalMinutes / Math.max(0.05, app.limitMinutes)) * 100)),
         };
       })
       .sort((left, right) => right.totalDurationMs - left.totalDurationMs);

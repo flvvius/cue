@@ -21,6 +21,10 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: themeColorBackground,
         },
+        sceneStyle: {
+          paddingTop: 8,
+          backgroundColor: themeColorBackground,
+        },
       }}
     >
       <Tabs.Screen
