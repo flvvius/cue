@@ -242,6 +242,7 @@ export const generateForUser: any = internalAction({
     ),
     limitMinutes: v.number(),
     breakDurationMinutes: v.number(),
+    sessionStartTime: v.optional(v.number()),
     alternatives: v.optional(v.array(v.string())),
     alternative: v.optional(v.string()),
     cooldownMinutes: v.optional(v.number()),
@@ -270,6 +271,7 @@ export const generateForUser: any = internalAction({
       alternative: generated.alternative,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
+      sessionStartTime: args.sessionStartTime,
       cooldownMinutes: args.cooldownMinutes,
     });
   },

@@ -35,7 +35,18 @@ export type BlockingConfig = {
   } | null;
 };
 
+export type BlockingSnapshot = {
+  appPackage: string;
+  appName: string;
+  limitMinutes: number;
+  sessionStartTime: number;
+  blockedAt: number;
+  thresholdBucket: "approaching" | "at_limit" | "exceeded";
+  reason: "limit" | "break";
+};
+
 type CueUsageAccessModuleShape = {
+  getBlockingSnapshot?: () => BlockingSnapshot | null;
   isOverlayPermissionGranted?: () => boolean;
   isUsageAccessGranted?: () => boolean;
   openOverlaySettings?: () => Promise<void>;
@@ -96,6 +107,10 @@ function hasBlockingMonitorMethods(module: CueUsageAccessModuleShape | null) {
       typeof module.startBlockingMonitor === "function" &&
       typeof module.stopBlockingMonitor === "function",
   );
+}
+
+function hasBlockingSnapshotMethod(module: CueUsageAccessModuleShape | null) {
+  return Boolean(module && typeof module.getBlockingSnapshot === "function");
 }
 
 function hasRecentAppsMethod(module: CueUsageAccessModuleShape | null) {
@@ -236,6 +251,19 @@ export async function getUsageEvents(options?: {
 
 export function hasUsageEventsBridge() {
   return hasUsageEventsMethod(getUsageAccessModule());
+}
+
+export function getBlockingSnapshot(): BlockingSnapshot | null {
+  const module = getUsageAccessModule();
+  if (Platform.OS !== "android" || !hasBlockingSnapshotMethod(module)) {
+    return null;
+  }
+
+  return module!.getBlockingSnapshot!() ?? null;
+}
+
+export function hasBlockingSnapshotBridge() {
+  return hasBlockingSnapshotMethod(getUsageAccessModule());
 }
 
 export async function setBlockingConfig(config: BlockingConfig) {

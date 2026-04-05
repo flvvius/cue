@@ -250,17 +250,29 @@ export function useEnforcementPreview() {
   }, [appState]);
 
   React.useEffect(() => {
+    const timeoutIds = new Set<ReturnType<typeof setTimeout>>();
     const subscription = AppState.addEventListener("change", (nextState) => {
       setAppState(nextState);
 
       if (nextState === "active") {
         setNow(Date.now());
         void refresh();
+        timeoutIds.add(setTimeout(() => {
+          setNow(Date.now());
+          void refresh();
+        }, 500));
+        timeoutIds.add(setTimeout(() => {
+          setNow(Date.now());
+          void refresh();
+        }, 1500));
       }
     });
 
     return () => {
       subscription.remove();
+      timeoutIds.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
     };
   }, [refresh]);
 

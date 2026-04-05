@@ -3,6 +3,7 @@
     "scheme": "cue",
     "userInterfaceStyle": "dark",
     "orientation": "default",
+    "icon": "./assets/images/logo.png",
     "ios": {
       "bundleIdentifier": "com.hack.cue",
       "supportsTablet": true,
@@ -12,6 +13,10 @@
     },
     "android": {
       "package": "com.hack.cue",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#020617"
+      },
       "permissions": [
         "android.permission.PACKAGE_USAGE_STATS",
         "android.permission.SYSTEM_ALERT_WINDOW",

@@ -103,10 +103,6 @@ export function BreakStateProvider({ children }: React.PropsWithChildren) {
 
   const startBreak = React.useCallback((breakState: ActiveBreak) => {
     setActiveBreak(breakState);
-    setSessionResetCutoffs((currentState) => ({
-      ...currentState,
-      [breakState.appPackage]: breakState.endsAt,
-    }));
     void startBreakForCurrentUser({
       appPackage: breakState.appPackage,
       appName: breakState.appName,

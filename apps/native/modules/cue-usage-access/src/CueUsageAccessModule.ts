@@ -1,6 +1,15 @@
 import { requireOptionalNativeModule } from "expo";
 
 export type CueUsageAccessNativeModule = {
+  getBlockingSnapshot(): {
+    appPackage: string;
+    appName: string;
+    limitMinutes: number;
+    sessionStartTime: number;
+    blockedAt: number;
+    thresholdBucket: "approaching" | "at_limit" | "exceeded";
+    reason: "limit" | "break";
+  } | null;
   isOverlayPermissionGranted(): boolean;
   isUsageAccessGranted(): boolean;
   openOverlaySettings(): Promise<void>;

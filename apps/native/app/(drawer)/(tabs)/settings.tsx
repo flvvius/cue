@@ -132,6 +132,7 @@ export default function SettingsTab() {
         thresholdBucket: "at_limit",
         limitMinutes: targetApp.limitMinutes,
         breakDurationMinutes: targetApp.breakMinutes,
+        sessionStartTime: Date.now(),
         alternatives: (alternatives ?? []).slice(0, 5).map((item: any) => item.activity),
         alternative: alternatives?.[0]?.activity,
         cooldownMinutes: 0,

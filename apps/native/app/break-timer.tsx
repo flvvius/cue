@@ -85,8 +85,18 @@ export default function BreakTimerScreen() {
   }, [appPackage, finishBreak, initialEndsAt, router]);
 
   return (
-    <Container className="bg-background px-5 py-8" isScrollable={false}>
-      <View className="flex-1 justify-between">
+    <Container
+      className="bg-background px-5"
+      isScrollable
+      scrollViewProps={{
+        contentContainerStyle: {
+          flexGrow: 1,
+          paddingTop: 32,
+          paddingBottom: 32,
+        },
+      }}
+    >
+      <View className="flex-1 justify-between gap-8">
         <View>
           <Text className="text-break text-xs uppercase tracking-[1.8px] font-['Inter_600SemiBold']">
             Break time
@@ -177,7 +187,7 @@ export default function BreakTimerScreen() {
           </View>
         </View>
 
-        <View className="gap-3">
+        <View className="gap-3 pb-2">
           {isComplete ? (
             <Pressable
               onPress={handleBackToCue}

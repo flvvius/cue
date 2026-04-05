@@ -74,6 +74,7 @@ async function queueNudgeForUser(params: {
   alternative?: string;
   thresholdBucket?: "approaching" | "at_limit" | "exceeded";
   breakDurationMinutes?: number;
+  sessionStartTime?: number;
   cooldownMinutes?: number;
 }) {
   const pendingNudges = await params.ctx.db
@@ -82,7 +83,10 @@ async function queueNudgeForUser(params: {
     .collect();
 
   const existingPending = pendingNudges.find(
-    (nudge: any) => nudge.triggerApp === params.triggerApp && nudge.type === params.type,
+    (nudge: any) =>
+      nudge.triggerApp === params.triggerApp &&
+      nudge.type === params.type &&
+      (params.sessionStartTime === undefined || nudge.sessionStartTime === params.sessionStartTime),
   );
   if (existingPending) {
     return {
@@ -103,6 +107,7 @@ async function queueNudgeForUser(params: {
       (nudge: any) =>
         nudge.triggerApp === params.triggerApp &&
         nudge.type === params.type &&
+        (params.sessionStartTime === undefined || nudge.sessionStartTime === params.sessionStartTime) &&
         nudge.createdAt >= cooldownBoundary,
     );
 
@@ -125,6 +130,7 @@ async function queueNudgeForUser(params: {
     alternative: params.alternative,
     thresholdBucket: params.thresholdBucket,
     breakDurationMinutes: params.breakDurationMinutes,
+    sessionStartTime: params.sessionStartTime,
     status: "pending",
     createdAt: Date.now(),
   });
@@ -144,6 +150,7 @@ export const queueForCurrentUser = mutation({
     alternative: v.optional(v.string()),
     thresholdBucket: v.optional(thresholdBucketValidator),
     breakDurationMinutes: v.optional(v.number()),
+    sessionStartTime: v.optional(v.number()),
     cooldownMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -162,6 +169,7 @@ export const queueForCurrentUser = mutation({
       alternative: args.alternative,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
+      sessionStartTime: args.sessionStartTime,
       cooldownMinutes: args.cooldownMinutes,
     });
   },
@@ -176,6 +184,7 @@ export const queueGeneratedForUser = internalMutation({
     alternative: v.optional(v.string()),
     thresholdBucket: v.optional(thresholdBucketValidator),
     breakDurationMinutes: v.optional(v.number()),
+    sessionStartTime: v.optional(v.number()),
     cooldownMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -188,6 +197,7 @@ export const queueGeneratedForUser = internalMutation({
       alternative: args.alternative,
       thresholdBucket: args.thresholdBucket,
       breakDurationMinutes: args.breakDurationMinutes,
+      sessionStartTime: args.sessionStartTime,
       cooldownMinutes: args.cooldownMinutes,
     });
   },

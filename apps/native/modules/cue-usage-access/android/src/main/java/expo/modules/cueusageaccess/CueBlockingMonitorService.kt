@@ -123,18 +123,18 @@ class CueBlockingMonitorService : Service() {
   private fun pollBlockingState() {
     val config = CueBlockingConfigStore.load(this)
     if (config == null || !config.enabled) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
     if (!hasUsageAccess(this) || !Settings.canDrawOverlays(this)) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
     val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
       ?: run {
-        hideOverlay()
+        clearBlockedState()
         return
       }
 
@@ -150,18 +150,18 @@ class CueBlockingMonitorService : Service() {
 
     val activePackage = currentForegroundPackage
     if (activePackage == null || activePackage == packageName || config.excludedPackages.contains(activePackage)) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
     if (resolveIsSystemApp(activePackage)) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
     val activeSession = trackedSessions[activePackage]
     if (activeSession == null || !activeSession.isActive) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
@@ -169,7 +169,7 @@ class CueBlockingMonitorService : Service() {
     if (resetCutoff != null && activeSession.startTime < resetCutoff) {
       trackedSessions.remove(activePackage)
       currentForegroundPackage = null
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
@@ -180,7 +180,7 @@ class CueBlockingMonitorService : Service() {
     val isOverLimit = sessionDurationMs >= limitMinutes * 60 * 1000L
 
     if (!isOverLimit && breakBlock == null) {
-      hideOverlay()
+      clearBlockedState()
       return
     }
 
@@ -195,10 +195,34 @@ class CueBlockingMonitorService : Service() {
       "You've hit your $limitMinutes-minute limit on $appName. Close it now or open Cue to take a reset."
     }
 
+    val thresholdBucket = when {
+      sessionDurationMs >= limitMinutes * 60 * 1000L * 12L / 10L -> "exceeded"
+      sessionDurationMs >= limitMinutes * 60 * 1000L -> "at_limit"
+      else -> "approaching"
+    }
+
+    CueBlockingConfigStore.saveSnapshot(
+      this,
+      BlockingSnapshot(
+        appPackage = activePackage,
+        appName = appName,
+        limitMinutes = limitMinutes,
+        sessionStartTime = activeSession.startTime,
+        blockedAt = now,
+        thresholdBucket = thresholdBucket,
+        reason = if (breakBlock != null) "break" else "limit",
+      ),
+    )
+
     showOverlay(
       title = "Time to step away from $appName",
       body = bodyText,
     )
+  }
+
+  private fun clearBlockedState() {
+    CueBlockingConfigStore.clearSnapshot(this)
+    hideOverlay()
   }
 
   private fun initializeTracking(usageStatsManager: UsageStatsManager, now: Long) {
@@ -321,6 +345,7 @@ class CueBlockingMonitorService : Service() {
         val homeButton = Button(this).apply {
           text = "Leave this app"
           setOnClickListener {
+            hideOverlay()
             val homeIntent = Intent(Intent.ACTION_MAIN).apply {
               addCategory(Intent.CATEGORY_HOME)
               flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -332,6 +357,7 @@ class CueBlockingMonitorService : Service() {
         val cueButton = Button(this).apply {
           text = "Open Cue"
           setOnClickListener {
+            hideOverlay()
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             if (launchIntent != null) {

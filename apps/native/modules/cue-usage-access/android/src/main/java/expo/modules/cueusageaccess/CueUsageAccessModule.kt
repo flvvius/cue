@@ -133,6 +133,23 @@ class CueUsageAccessModule : Module() {
       hasUsageAccess(context)
     }
 
+    Function("getBlockingSnapshot") {
+      val context = appContext.reactContext?.applicationContext
+        ?: throw IllegalStateException("React context is not available")
+
+      CueBlockingConfigStore.loadSnapshot(context)?.let { snapshot ->
+        mapOf(
+          "appPackage" to snapshot.appPackage,
+          "appName" to snapshot.appName,
+          "limitMinutes" to snapshot.limitMinutes,
+          "sessionStartTime" to snapshot.sessionStartTime,
+          "blockedAt" to snapshot.blockedAt,
+          "thresholdBucket" to snapshot.thresholdBucket,
+          "reason" to snapshot.reason,
+        )
+      }
+    }
+
     AsyncFunction("openUsageAccessSettings") {
       val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available")

@@ -111,6 +111,7 @@ export default defineSchema({
       ),
     ),
     breakDurationMinutes: v.optional(v.number()),
+    sessionStartTime: v.optional(v.number()),
     status: v.union(
       v.literal("pending"),
       v.literal("shown"),

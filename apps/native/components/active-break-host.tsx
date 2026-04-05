@@ -73,7 +73,13 @@ export function ActiveBreakHost() {
           })
         }
         className="rounded-2xl border border-break/30 bg-break/12 px-4 py-4"
-        style={({ pressed }) => [{ opacity: pressed ? 0.94 : 1 }]}
+        style={({ pressed }) => [
+          {
+            opacity: pressed ? 0.94 : 1,
+            backgroundColor: "#0f172a",
+            borderColor: "#7c3aed",
+          },
+        ]}
       >
         <Text className="text-break text-xs uppercase tracking-[1.6px] font-['Inter_600SemiBold']">
           Active break

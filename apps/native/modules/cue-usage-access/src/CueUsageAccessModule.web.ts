@@ -1,6 +1,9 @@
 import type { CueUsageAccessNativeModule } from "./CueUsageAccessModule";
 
 const CueUsageAccessModule: CueUsageAccessNativeModule = {
+  getBlockingSnapshot() {
+    return null;
+  },
   isOverlayPermissionGranted() {
     return false;
   },

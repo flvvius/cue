@@ -6,6 +6,7 @@ import org.json.JSONObject
 
 private const val PREFS_NAME = "cue_usage_access_prefs"
 private const val PREF_BLOCKING_CONFIG = "blocking_config_json"
+private const val PREF_BLOCKING_SNAPSHOT = "blocking_snapshot_json"
 
 data class BlockingRule(
   val appPackage: String,
@@ -27,6 +28,16 @@ data class BlockingConfig(
   val activeBreak: ActiveBreakConfig?,
 )
 
+data class BlockingSnapshot(
+  val appPackage: String,
+  val appName: String,
+  val limitMinutes: Int,
+  val sessionStartTime: Long,
+  val blockedAt: Long,
+  val thresholdBucket: String,
+  val reason: String,
+)
+
 object CueBlockingConfigStore {
   fun save(context: Context, configJson: String) {
     context
@@ -42,6 +53,42 @@ object CueBlockingConfigStore {
       .edit()
       .remove(PREF_BLOCKING_CONFIG)
       .apply()
+  }
+
+  fun saveSnapshot(context: Context, snapshot: BlockingSnapshot) {
+    val payload = JSONObject()
+      .put("appPackage", snapshot.appPackage)
+      .put("appName", snapshot.appName)
+      .put("limitMinutes", snapshot.limitMinutes)
+      .put("sessionStartTime", snapshot.sessionStartTime)
+      .put("blockedAt", snapshot.blockedAt)
+      .put("thresholdBucket", snapshot.thresholdBucket)
+      .put("reason", snapshot.reason)
+
+    context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putString(PREF_BLOCKING_SNAPSHOT, payload.toString())
+      .apply()
+  }
+
+  fun clearSnapshot(context: Context) {
+    context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .remove(PREF_BLOCKING_SNAPSHOT)
+      .apply()
+  }
+
+  fun loadSnapshot(context: Context): BlockingSnapshot? {
+    val rawJson = context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .getString(PREF_BLOCKING_SNAPSHOT, null)
+      ?: return null
+
+    return runCatching {
+      parseSnapshot(rawJson)
+    }.getOrNull()
   }
 
   fun load(context: Context): BlockingConfig? {
@@ -113,6 +160,19 @@ object CueBlockingConfigStore {
       excludedPackages = excludedPackages,
       sessionResetCutoffs = sessionResetCutoffs,
       activeBreak = activeBreak,
+    )
+  }
+
+  private fun parseSnapshot(rawJson: String): BlockingSnapshot {
+    val payload = JSONObject(rawJson)
+    return BlockingSnapshot(
+      appPackage = payload.optString("appPackage"),
+      appName = payload.optString("appName"),
+      limitMinutes = payload.optInt("limitMinutes", 1).coerceAtLeast(1),
+      sessionStartTime = payload.optLong("sessionStartTime", 0L),
+      blockedAt = payload.optLong("blockedAt", 0L),
+      thresholdBucket = payload.optString("thresholdBucket", "at_limit"),
+      reason = payload.optString("reason", "limit"),
     )
   }
 }
